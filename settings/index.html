@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="/theme.js"></script>
+    <!-- The browser waits for this before painting, so the top bar never
+         blinks out between pages (see src/mount.tsx) -->
+    <script type="module" src="/src/settings/main.tsx" blocking="render"></script>
+    <!-- The top bar's font, fetched straight away (see src/topbar.css) -->
+    <link rel="preload" href="/fonts/barlow-condensed-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/barlow-condensed-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="icon" type="image/png" href="/lambert-icon.png">
+    <title>Settings | Lambert Robotics</title>
+  </head>
+  <body class="min-h-screen antialiased">
+    <div id="root"></div>
+  </body>
+</html>

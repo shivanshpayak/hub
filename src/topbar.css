@@ -1,0 +1,277 @@
+/*
+ * The hub's top bar, in Lambert Robotics' maroon and silver (the same colours
+ * as the scouting app). Laid out like a team site header: the name on the
+ * left, small spaced capitals on the right, a silver bar under the page you
+ * are on, and a Menu button on narrow screens.
+ *
+ * Every property is set here rather than left to the browser, so the bar
+ * looks the same on the plain pages and on the ManuQueue styled ones (login,
+ * members), whose Tailwind reset changes how links, lists and buttons look.
+ */
+
+/*
+ * The bar's lettering, Barlow Condensed (SIL Open Font License, in
+ * public/fonts with its licence). Each page preloads these two files in its
+ * <head>, and "optional" tells the browser never to swap fonts on screen, so
+ * the bar doesn't flash a wider stand-in font for a frame on each new page.
+ * Only if the font can't arrive in time (a first visit on a slow connection)
+ * does that page keep the stand-in.
+ */
+@font-face {
+  font-family: "Barlow Condensed";
+  font-style: normal;
+  font-weight: 600;
+  font-display: optional;
+  src: url("/fonts/barlow-condensed-latin-600-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Barlow Condensed";
+  font-style: normal;
+  font-weight: 700;
+  font-display: optional;
+  src: url("/fonts/barlow-condensed-latin-700-normal.woff2") format("woff2");
+}
+
+/* The bar runs edge to edge; plain pages get their margin back from .hub-main */
+body {
+  margin: 0;
+}
+
+.hub-main {
+  margin: 16px;
+}
+
+.hub-top-bar {
+  --hub-maroon: #8e1b2b;
+  --hub-maroon-deep: #741522;
+  --hub-silver: #c7c2b8;
+  --hub-bar-height: 64px;
+  position: relative;
+  z-index: 40;
+  background: var(--hub-maroon);
+  color: #ffffff;
+  font-family: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  line-height: 1;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+}
+
+.hub-top-bar *,
+.hub-top-bar *::before,
+.hub-top-bar *::after {
+  box-sizing: border-box;
+}
+
+.hub-top-bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  height: var(--hub-bar-height);
+  padding: 0 16px;
+}
+
+.hub-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.hub-brand:hover {
+  color: var(--hub-silver);
+}
+
+/* Shown at the image's own size (40 by 40) so it stays sharp */
+.hub-brand-icon {
+  display: block;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 6px;
+}
+
+.hub-nav {
+  height: 100%;
+  margin-left: auto;
+}
+
+.hub-nav ul {
+  display: flex;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hub-nav li {
+  height: 100%;
+}
+
+.hub-nav a {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 12px;
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* The bar under a link sits on the bar's bottom edge */
+.hub-nav a:hover {
+  box-shadow: inset 0 -4px 0 rgba(199, 194, 184, 0.5);
+}
+
+.hub-nav a[aria-current="page"] {
+  box-shadow: inset 0 -4px 0 var(--hub-silver);
+}
+
+.hub-account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.hub-nav ~ .hub-account {
+  margin-left: 0;
+}
+
+.hub-account-name {
+  color: var(--hub-silver);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.hub-outline-button {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  margin: 0;
+  padding: 0 16px;
+  background: transparent;
+  color: #ffffff;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.hub-outline-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #ffffff;
+}
+
+.hub-top-bar a:focus-visible,
+.hub-top-bar button:focus-visible {
+  outline: 2px solid var(--hub-silver);
+  outline-offset: 2px;
+}
+
+.hub-menu-button {
+  display: none;
+}
+
+.hub-menu-icon {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 18px;
+  height: 12px;
+}
+
+.hub-menu-icon span {
+  display: block;
+  height: 2px;
+  background: currentColor;
+  border-radius: 1px;
+}
+
+.hub-mobile-menu {
+  display: none;
+}
+
+/* Not enough room for the name next to the links */
+@media (max-width: 1180px) {
+  .hub-account-name {
+    display: none;
+  }
+}
+
+/* Phones and small windows: the links move into the Menu */
+@media (max-width: 940px) {
+  .hub-top-bar.is-signed-in .hub-nav,
+  .hub-top-bar.is-signed-in .hub-account {
+    display: none;
+  }
+
+  .hub-menu-button {
+    display: inline-flex;
+    margin-left: auto;
+  }
+
+  .hub-mobile-menu {
+    display: block;
+    background: var(--hub-maroon-deep);
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  .hub-mobile-menu ul {
+    margin: 0;
+    padding: 4px 0 8px;
+    list-style: none;
+  }
+
+  .hub-mobile-menu a,
+  .hub-mobile-menu button {
+    appearance: none;
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 14px 16px;
+    background: transparent;
+    border: 0;
+    color: #ffffff;
+    text-align: left;
+    text-decoration: none;
+    font-family: inherit;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    line-height: 1;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .hub-mobile-menu a[aria-current="page"] {
+    box-shadow: inset 4px 0 0 var(--hub-silver);
+  }
+
+  .hub-mobile-signed-in {
+    margin: 0;
+    padding: 14px 16px 6px;
+    color: var(--hub-silver);
+    font-size: 15px;
+    letter-spacing: 0.04em;
+  }
+}
