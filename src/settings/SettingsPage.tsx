@@ -3,20 +3,29 @@ import { TopBar } from "../TopBar";
 import { hubPath } from "../paths";
 import { getTheme, setTheme, type Theme } from "../theme";
 import { NotificationSettings } from "./NotificationSettings";
+import { PasswordSettings } from "./PasswordSettings";
+import { MemberPins } from "./MemberPins";
 import { rememberedMe } from "../me";
 
 /*
  * Copied from ManuQueue's settings (its layout, sidebar, section heading and
- * theme picker). Appearance, Notifications and Support live here. Team,
- * Budget and Trash are still ManuQueue's pages, linked from the sidebar until
- * each one moves over.
+ * theme picker). Appearance, Notifications, Password, Confidential (Admins
+ * only: everyone's password) and Support live here.
+ * Team, Budget and Trash are still ManuQueue's pages, linked from the sidebar
+ * until each one moves over.
  */
 
 type Me = { permissions: Record<string, boolean> };
 
-type Section = "appearance" | "notifications" | "support";
+type Section = "appearance" | "notifications" | "password" | "confidential" | "support";
 
-const SECTIONS: Section[] = ["appearance", "notifications", "support"];
+const SECTIONS: Section[] = [
+  "appearance",
+  "notifications",
+  "password",
+  "confidential",
+  "support",
+];
 
 type NavItem =
   | { kind: "here"; section: Section; label: string }
@@ -127,6 +136,10 @@ export function SettingsPage() {
   const items: NavItem[] = [
     { kind: "here", section: "appearance", label: "Appearance" },
     { kind: "here", section: "notifications", label: "Notifications" },
+    { kind: "here", section: "password", label: "Password" },
+    ...(can("password:view-member-pins")
+      ? [{ kind: "here", section: "confidential", label: "Confidential" } as const]
+      : []),
     ...(can("team:manage")
       ? [{ kind: "manuqueue", path: "/settings/team", label: "Team" } as const]
       : []),
@@ -149,7 +162,7 @@ export function SettingsPage() {
       <TopBar />
       <div className="flex min-h-[calc(100vh-64px)] flex-col sm:flex-row">
         <aside className="shrink-0 border-b border-black/10 bg-black/[0.015] sm:w-56 sm:border-b-0 sm:border-r dark:border-white/10 dark:bg-white/[0.02]">
-          <div className="px-3 py-3 sm:sticky sm:top-0 sm:px-3 sm:py-6">
+          <div className="px-3 py-3 sm:sticky sm:top-16 sm:px-3 sm:py-6">
             <nav
               aria-label="Settings sections"
               className="flex gap-1 overflow-x-auto sm:flex-col sm:overflow-x-visible"
@@ -193,6 +206,30 @@ export function SettingsPage() {
               </SettingsSection>
             ) : section === "notifications" ? (
               <NotificationSettings />
+            ) : section === "password" ? (
+              // Waits for the server's answer so a lead isn't shown the PIN rules
+              me ? (
+                <SettingsSection
+                  title="Password"
+                  description={
+                    can("password:any")
+                      ? "Change the password you sign in with. As Admin or Leadership, you can use anything you like."
+                      : "Change the PIN you sign in with. It must be 4 digits, not all the same digit, and not a common one like 1234."
+                  }
+                >
+                  <PasswordSettings
+                    key={String(can("password:any"))}
+                    anyPassword={can("password:any")}
+                  />
+                </SettingsSection>
+              ) : null
+            ) : section === "confidential" ? (
+              <SettingsSection
+                title="Passwords"
+                description=""
+              >
+                <MemberPins canEdit={can("password:edit-any")} />
+              </SettingsSection>
             ) : (
               <SettingsSection
                 title="Support"

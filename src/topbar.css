@@ -2,7 +2,8 @@
  * The hub's top bar, in Lambert Robotics' maroon and silver (the same colours
  * as the scouting app). Laid out like a team site header: the name on the
  * left, small spaced capitals on the right, a silver bar under the page you
- * are on, and a Menu button on narrow screens.
+ * are on, and a Menu button when they don't all fit on one row. It stays at
+ * the top of the screen as the page scrolls.
  *
  * Every property is set here rather than left to the browser, so the bar
  * looks the same on the plain pages and on the ManuQueue styled ones (login,
@@ -42,12 +43,19 @@ body {
   margin: 16px;
 }
 
+/* A link to part of a page (the front page's sections, a settings section)
+   lands below the bar instead of under it */
+html:has(.hub-top-bar) {
+  scroll-padding-top: 64px;
+}
+
 .hub-top-bar {
   --hub-maroon: #8e1b2b;
   --hub-maroon-deep: #741522;
   --hub-silver: #c7c2b8;
   --hub-bar-height: 64px;
-  position: relative;
+  position: sticky;
+  top: 0;
   z-index: 40;
   background: var(--hub-maroon);
   color: #ffffff;
@@ -101,7 +109,13 @@ body {
   margin-left: auto;
 }
 
-.hub-nav ul {
+/* A page's own contents (the front page's sections), next to the name */
+.hub-contents {
+  height: 100%;
+}
+
+.hub-nav ul,
+.hub-contents ul {
   display: flex;
   height: 100%;
   margin: 0;
@@ -109,11 +123,13 @@ body {
   list-style: none;
 }
 
-.hub-nav li {
+.hub-nav li,
+.hub-contents li {
   height: 100%;
 }
 
-.hub-nav a {
+.hub-nav a,
+.hub-contents a {
   display: flex;
   align-items: center;
   height: 100%;
@@ -128,12 +144,20 @@ body {
 }
 
 /* The bar under a link sits on the bar's bottom edge */
-.hub-nav a:hover {
+.hub-nav a:hover,
+.hub-contents a:hover {
   box-shadow: inset 0 -4px 0 rgba(199, 194, 184, 0.5);
 }
 
 .hub-nav a[aria-current="page"] {
   box-shadow: inset 0 -4px 0 var(--hub-silver);
+}
+
+.hub-contents-number {
+  margin-right: 6px;
+  color: var(--hub-silver);
+  font-size: 12px;
+  letter-spacing: 0.06em;
 }
 
 .hub-account {
@@ -188,10 +212,6 @@ body {
   outline-offset: 2px;
 }
 
-.hub-menu-button {
-  display: none;
-}
-
 .hub-menu-icon {
   display: inline-flex;
   flex-direction: column;
@@ -207,10 +227,6 @@ body {
   border-radius: 1px;
 }
 
-.hub-mobile-menu {
-  display: none;
-}
-
 /* Not enough room for the name next to the links */
 @media (max-width: 1180px) {
   .hub-account-name {
@@ -218,60 +234,120 @@ body {
   }
 }
 
-/* Phones and small windows: the links move into the Menu */
-@media (max-width: 940px) {
-  .hub-top-bar.is-signed-in .hub-nav,
-  .hub-top-bar.is-signed-in .hub-account {
-    display: none;
-  }
+/* Too much for one row (TopBar.tsx measures it): first the page's contents
+   move into the Menu, then the app links and the account too */
+.hub-top-bar.is-folded .hub-contents,
+.hub-top-bar.is-crowded .hub-nav,
+.hub-top-bar.is-crowded .hub-account {
+  display: none;
+}
 
-  .hub-menu-button {
-    display: inline-flex;
-    margin-left: auto;
-  }
+.hub-top-bar.is-folded .hub-menu-button {
+  margin-left: -8px;
+}
 
-  .hub-mobile-menu {
-    display: block;
-    background: var(--hub-maroon-deep);
-    border-top: 1px solid rgba(255, 255, 255, 0.15);
-  }
+.hub-top-bar.is-crowded .hub-menu-button {
+  margin-left: auto;
+}
 
-  .hub-mobile-menu ul {
-    margin: 0;
-    padding: 4px 0 8px;
-    list-style: none;
-  }
+.hub-mobile-menu {
+  /* The bar stays on screen, so a long Menu scrolls inside itself */
+  max-height: calc(100dvh - var(--hub-bar-height));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--hub-maroon-deep);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
 
-  .hub-mobile-menu a,
-  .hub-mobile-menu button {
-    appearance: none;
-    display: block;
-    width: 100%;
-    margin: 0;
-    padding: 14px 16px;
-    background: transparent;
-    border: 0;
-    color: #ffffff;
-    text-align: left;
-    text-decoration: none;
-    font-family: inherit;
-    font-size: 17px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    line-height: 1;
-    text-transform: uppercase;
-    cursor: pointer;
-  }
+.hub-mobile-menu ul {
+  margin: 0;
+  padding: 4px 0 8px;
+  list-style: none;
+}
 
-  .hub-mobile-menu a[aria-current="page"] {
-    box-shadow: inset 4px 0 0 var(--hub-silver);
-  }
+/* The page's contents, then the apps and the account */
+.hub-mobile-menu ul + ul {
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
 
-  .hub-mobile-signed-in {
-    margin: 0;
-    padding: 14px 16px 6px;
-    color: var(--hub-silver);
-    font-size: 15px;
-    letter-spacing: 0.04em;
-  }
+.hub-mobile-menu a,
+.hub-mobile-menu button {
+  appearance: none;
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 14px 16px;
+  background: transparent;
+  border: 0;
+  color: #ffffff;
+  text-align: left;
+  text-decoration: none;
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.hub-mobile-menu a[aria-current="page"] {
+  box-shadow: inset 4px 0 0 var(--hub-silver);
+}
+
+.hub-mobile-menu .hub-contents-number {
+  font-size: 13px;
+}
+
+.hub-mobile-signed-in {
+  margin: 0;
+  padding: 14px 16px 6px;
+  color: var(--hub-silver);
+  font-size: 15px;
+  letter-spacing: 0.04em;
+}
+
+/*
+ * Submit a Bug (TopBar.tsx): floats bottom right on every hub page for anyone
+ * signed in, like ManuQueue's, in the bar's maroon and lettering. Pages leave
+ * room under it so it never covers the end of the page.
+ */
+.hub-bug-button {
+  position: fixed;
+  right: calc(12px + env(safe-area-inset-right));
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: 45;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 40px;
+  margin: 0;
+  padding: 0 18px;
+  background: #8e1b2b;
+  color: #ffffff;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  font-family: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+
+.hub-bug-button:hover {
+  background: #741522;
+  color: #ffffff;
+}
+
+.hub-bug-button:focus-visible {
+  outline: 2px solid #c7c2b8;
+  outline-offset: 2px;
+}
+
+body:has(.hub-bug-button) {
+  padding-bottom: calc(64px + env(safe-area-inset-bottom));
 }

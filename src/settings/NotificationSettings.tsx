@@ -429,7 +429,7 @@ function PrefsForm({ categories, save }: { categories: Settings["categories"]; s
 }
 
 // ManuQueue's FormMessage
-function FormMessage({ tone, message }: { tone: "success" | "error"; message: string }) {
+export function FormMessage({ tone, message }: { tone: "success" | "error"; message: string }) {
   const toneClass =
     tone === "error"
       ? "border-red-200 bg-red-50 text-red-700 shadow-sm dark:border-red-500/30 dark:bg-red-900/20 dark:text-red-300"

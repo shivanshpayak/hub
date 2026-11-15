@@ -52,7 +52,7 @@ const toolkitUrl = (
     build: {
       rollupOptions: {
         // Plain pages (home, roles, scouting roster) and ManuQueue styled
-        // ones (login, members, settings)
+        // ones (login, members, settings, edit binder)
         input: {
           main: "index.html",
           login: "login/index.html",
@@ -60,6 +60,7 @@ const toolkitUrl = (
           members: "members/index.html",
           scoutingRoster: "scouting-roster/index.html",
           settings: "settings/index.html",
+          editBinder: "edit-binder/index.html",
         },
       },
     },

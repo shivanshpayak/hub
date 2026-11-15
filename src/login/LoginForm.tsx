@@ -13,7 +13,12 @@ import {
 import { hubPath } from "../paths";
 import { rememberMe } from "../me";
 
-type MemberOption = { id: string; name: string };
+type MemberOption = {
+  id: string;
+  name: string;
+  /** Signs in with a 4-digit PIN. Never set for Admin and Leadership. */
+  numberPad?: boolean;
+};
 
 type LoginApiResponse = {
   error?: string;
@@ -323,7 +328,7 @@ export function LoginForm() {
           Login
         </h2>
         <p className="mt-1 text-sm text-black/65 dark:text-white/65">
-          Type your name and enter your PIN.
+          Type your name and enter your PIN or password.
         </p>
       </div>
 
@@ -342,17 +347,20 @@ export function LoginForm() {
 
       <label className="block space-y-1">
         <span className="text-sm font-medium text-black dark:text-white">
-          PIN
+          PIN or password
         </span>
+        {/* Members have a 4-digit PIN and get the number pad. Admin and
+            Leadership can have any password and get the whole keyboard */}
         <input
           ref={pinRef}
           type="password"
-          inputMode="numeric"
+          inputMode={
+            members.find((m) => m.id === selectedUserId)?.numberPad
+              ? "numeric"
+              : undefined
+          }
           value={pin}
-          onChange={(e) => {
-            const val = e.target.value.replace(/\D/g, "");
-            setPin(val);
-          }}
+          onChange={(e) => setPin(e.target.value)}
           autoComplete="off"
           required
           disabled={isPending || !selectedUserId}

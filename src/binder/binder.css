@@ -1,0 +1,1016 @@
+/*
+ * The front page binder (BinderPage.tsx). The layout is shared; each team
+ * sets its own look on .binder[data-team]:
+ *
+ *   Lambda: dark and warm. Maroon on near black, a blueprint grid, tall
+ *   condensed capitals (Big Shoulders) and sharp cut corners.
+ *
+ *   Gamma: light and cool. Graphite on brushed silver, wide rounded
+ *   lettering (Unbounded) and frosted rounded cards.
+ *
+ * Above both sits the team logo, which is also the team picker. The only
+ * movement is the logo's gear; switching teams is instant.
+ *
+ * Neither follows the hub's light or dark setting: each team's look is its
+ * own. All movement stops for visitors whose device asks for less motion.
+ */
+
+html[data-binder-team="lambda"] {
+  background: #0e0708;
+  scrollbar-color: #5a1f29 #0e0708;
+}
+
+html[data-binder-team="gamma"] {
+  background: #dcd8d0;
+  scrollbar-color: #a19d95 #e4e1db;
+}
+
+html:has(.binder) {
+  scroll-behavior: smooth;
+}
+
+.binder,
+.binder *,
+.binder *::before,
+.binder *::after {
+  box-sizing: border-box;
+}
+
+.binder {
+  --b-gutter: 16px;
+  min-height: calc(100vh - 64px);
+  background: var(--b-page);
+  color: var(--b-text);
+  font-family: var(--b-font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
+}
+
+@media (min-width: 720px) {
+  .binder {
+    --b-gutter: 32px;
+  }
+}
+
+.binder h1,
+.binder h2,
+.binder h3,
+.binder h4,
+.binder p,
+.binder ul,
+.binder ol,
+.binder dl,
+.binder dd,
+.binder figure {
+  margin: 0;
+}
+
+.binder ul,
+.binder ol {
+  padding: 0;
+  list-style: none;
+}
+
+.binder a {
+  color: inherit;
+}
+
+.binder button {
+  font: inherit;
+  color: inherit;
+}
+
+.binder img {
+  display: block;
+  max-width: 100%;
+}
+
+.binder a:focus-visible,
+.binder button:focus-visible {
+  outline: 2px solid var(--b-focus);
+  outline-offset: 3px;
+}
+
+.binder-wrap {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 var(--b-gutter);
+}
+
+/* ------------------------------------------------------------------ */
+/* Lambda's look                                                       */
+/* ------------------------------------------------------------------ */
+
+.binder[data-team="lambda"] {
+  --b-text: #f3eee7;
+  --b-muted: #b9b1a6;
+  --b-maroon: #8e1b2b;
+  --b-ember: #e2475b;
+  --b-silver: #c7c2b8;
+  --b-line: rgba(199, 194, 184, 0.14);
+  --b-card: #170a0d;
+  --b-focus: #e2475b;
+  --b-font-display: "Big Shoulders Variable", "Barlow Condensed", "Arial Narrow", sans-serif;
+  --b-font-body: "Geist Variable", system-ui, sans-serif;
+  --b-font-label: "Geist Mono Variable", ui-monospace, monospace;
+  --b-page:
+    radial-gradient(1100px 620px at 88% -6%, rgba(142, 27, 43, 0.5), transparent 62%),
+    radial-gradient(700px 500px at -10% 40%, rgba(142, 27, 43, 0.16), transparent 70%),
+    linear-gradient(rgba(199, 194, 184, 0.045) 1px, transparent 1px) 0 0 / 44px 44px,
+    linear-gradient(90deg, rgba(199, 194, 184, 0.045) 1px, transparent 1px) 0 0 / 44px 44px,
+    #0e0708;
+}
+
+/* ------------------------------------------------------------------ */
+/* Gamma's look                                                        */
+/* ------------------------------------------------------------------ */
+
+.binder[data-team="gamma"] {
+  --b-text: #15181c;
+  --b-muted: #4f555d;
+  --b-graphite: #23282e;
+  --b-silver: #c7c2b8;
+  --b-line: rgba(21, 24, 28, 0.12);
+  --b-card: rgba(255, 255, 255, 0.55);
+  --b-focus: #23282e;
+  --b-font-display: "Unbounded Variable", system-ui, sans-serif;
+  --b-font-body: "Space Grotesk Variable", system-ui, sans-serif;
+  --b-font-label: "Space Grotesk Variable", system-ui, sans-serif;
+  --b-page:
+    radial-gradient(1000px 560px at 50% -4%, rgba(255, 255, 255, 0.95), transparent 70%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.22) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, #f2f0ec 0%, #e3e0da 45%, #d6d2ca 100%);
+}
+
+/* ------------------------------------------------------------------ */
+/* Past seasons: a plain button for now, at the top right              */
+/* ------------------------------------------------------------------ */
+
+/* Phones: on its own line above the logo. Wider screens: in the corner
+   beside it */
+.binder-past {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (min-width: 900px) {
+  .binder-past {
+    position: absolute;
+    top: 20px;
+    right: var(--b-gutter);
+  }
+}
+
+.binder-past-button {
+  appearance: none;
+  height: 38px;
+  margin: 0;
+  padding: 0 14px;
+  background: transparent;
+  border: 1px solid var(--b-line);
+  color: var(--b-text);
+  font-family: var(--b-font-label);
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.binder[data-team="lambda"] .binder-past-button {
+  border-color: rgba(199, 194, 184, 0.35);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.binder[data-team="lambda"] .binder-past-button:hover,
+.binder[data-team="lambda"] .binder-past-button[aria-expanded="true"] {
+  border-color: var(--b-ember);
+  color: #ffffff;
+}
+
+.binder[data-team="gamma"] .binder-past-button {
+  border-color: rgba(21, 24, 28, 0.2);
+  border-radius: 999px;
+  font-weight: 500;
+}
+
+.binder[data-team="gamma"] .binder-past-button:hover,
+.binder[data-team="gamma"] .binder-past-button[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.binder-past-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(280px, calc(100vw - 32px));
+  padding: 16px 18px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.binder .binder-past-empty {
+  margin-top: 6px;
+  color: var(--b-muted);
+}
+
+.binder[data-team="lambda"] .binder-past-panel {
+  background: #1a0c0f;
+  border: 1px solid rgba(142, 27, 43, 0.8);
+  border-left: 3px solid var(--b-ember);
+}
+
+.binder[data-team="gamma"] .binder-past-panel {
+  background: rgba(250, 249, 247, 0.96);
+  border: 1px solid rgba(21, 24, 28, 0.12);
+  border-radius: 18px;
+  box-shadow: 0 18px 40px -16px rgba(21, 24, 28, 0.35);
+}
+
+/* The seasons in the panel, newest first */
+.binder-past-list {
+  display: grid;
+  gap: 2px;
+}
+
+.binder-past-list a {
+  display: block;
+  padding: 8px 10px;
+  text-decoration: none;
+  font-family: var(--b-font-label);
+}
+
+.binder[data-team="lambda"] .binder-past-list a {
+  border-left: 2px solid transparent;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 13px;
+}
+
+.binder[data-team="lambda"] .binder-past-list a:hover,
+.binder[data-team="lambda"] .binder-past-list a[aria-current="page"] {
+  border-left-color: var(--b-ember);
+  background: rgba(142, 27, 43, 0.35);
+  color: #ffffff;
+}
+
+.binder[data-team="gamma"] .binder-past-list a {
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.binder[data-team="gamma"] .binder-past-list a:hover,
+.binder[data-team="gamma"] .binder-past-list a[aria-current="page"] {
+  background: rgba(35, 40, 46, 0.08);
+}
+
+/* ------------------------------------------------------------------ */
+/* Under the logo on a past season (or a draft, for editors)           */
+/* ------------------------------------------------------------------ */
+
+.binder .binder-season-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-top: 20px;
+  padding: 12px 16px;
+  font-size: 14px;
+}
+
+.binder-season-note a {
+  white-space: nowrap;
+}
+
+.binder[data-team="lambda"] .binder-season-note {
+  background: #1a0c0f;
+  border: 1px solid rgba(142, 27, 43, 0.8);
+  border-left: 3px solid var(--b-ember);
+  font-family: var(--b-font-label);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.binder[data-team="lambda"] .binder-season-note a {
+  color: var(--b-ember);
+}
+
+/* Gamma's mirrors Lambda's: the line on the right */
+.binder[data-team="gamma"] .binder-season-note {
+  flex-direction: row-reverse;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  box-shadow: 0 12px 30px -20px rgba(21, 24, 28, 0.45);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  padding-inline: 22px;
+  font-weight: 500;
+}
+
+.binder[data-team="gamma"] .binder-season-note a {
+  color: var(--b-graphite);
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------ */
+/* The logo (LambertLogo.tsx): Lambda's half and Gamma's half          */
+/* ------------------------------------------------------------------ */
+
+.binder-logo-wrap {
+  position: relative;
+  padding-top: 16px;
+}
+
+.binder-past + .binder-logo {
+  margin-top: 8px;
+}
+
+.binder-logo {
+  display: block;
+  width: min(100%, 760px);
+  height: auto;
+  margin: 0 auto;
+  overflow: visible;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.binder[data-team="lambda"] .binder-logo {
+  --logo-page: #0e0708;
+  --logo-line: rgba(199, 194, 184, 0.55);
+  --logo-gear: rgba(199, 194, 184, 0.45);
+}
+
+.binder[data-team="gamma"] .binder-logo {
+  --logo-page: #f1efeb;
+  --logo-line: rgba(35, 40, 46, 0.45);
+  --logo-gear: rgba(35, 40, 46, 0.32);
+}
+
+.binder-logo-gear {
+  fill: none;
+  stroke: var(--logo-gear);
+  stroke-width: 2;
+}
+
+.binder-logo-half {
+  cursor: pointer;
+}
+
+.binder-logo-half.is-on {
+  cursor: default;
+}
+
+.binder-logo-hit {
+  fill: transparent;
+}
+
+/* The letters' backing, in the page's colour so the gear doesn't show
+   through */
+.binder-logo-backing {
+  fill: var(--logo-page);
+  pointer-events: none;
+}
+
+/* The outline */
+.binder-logo-off {
+  fill: none;
+  stroke: var(--logo-line);
+  stroke-width: 1.4;
+}
+
+/* The team's colours: on when its binder is open, part way when pointed at.
+   Only pointing fades in; switching teams changes them straight away */
+.binder-logo-colour {
+  opacity: 0;
+}
+
+.binder-logo-half[data-for="gamma"] .binder-logo-colour {
+  stroke: #23282e;
+  stroke-width: 1.2;
+}
+
+.binder-logo-half.is-on .binder-logo-colour {
+  opacity: 1;
+}
+
+.binder-logo-half:not(.is-on):hover .binder-logo-colour {
+  opacity: 0.5;
+  transition: opacity 0.35s ease;
+}
+
+/* Each horn's name; the two match, like mirror images. The size was
+   measured to fit inside the horns (LambertLogo.tsx, NAME_AT) */
+.binder-logo-name {
+  fill: var(--logo-line);
+  font-family: "Big Shoulders Variable", "Arial Narrow", sans-serif;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 3.5px;
+}
+
+.binder-logo-half[data-for="lambda"].is-on .binder-logo-name {
+  fill: #fbf3ef;
+}
+
+.binder-logo-half[data-for="gamma"].is-on .binder-logo-name {
+  fill: #15181c;
+}
+
+/* Keyboard focus: the half's edge turns the focus colour */
+.binder .binder-logo-half:focus-visible {
+  outline: none;
+}
+
+.binder-logo-half:focus-visible .binder-logo-off,
+.binder-logo-half:focus-visible .binder-logo-colour {
+  stroke: var(--b-focus);
+  stroke-width: 3;
+}
+
+@media (min-width: 900px) {
+  .binder-logo-wrap {
+    padding-top: 44px;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* The top of the binder                                               */
+/* ------------------------------------------------------------------ */
+
+.binder-hero {
+  position: relative;
+  padding: 24px 0 56px;
+}
+
+.binder-hero-grid {
+  display: grid;
+  /* Never wider than the screen, whatever the parts inside would like */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
+}
+
+.binder-hero-text {
+  min-width: 0;
+}
+
+/* A photo or render of the robot, once there is one (content.ts) */
+.binder-hero-art {
+  justify-self: center;
+  width: min(100%, 420px);
+}
+
+.binder-hero-art img {
+  width: 100%;
+  height: auto;
+}
+
+.binder-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 12px;
+}
+
+.binder-stat dt {
+  font-family: var(--b-font-label);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--b-muted);
+}
+
+.binder-stat dd {
+  margin-top: 4px;
+  font-family: var(--b-font-display);
+}
+
+.binder-title {
+  font-family: var(--b-font-display);
+  line-height: 0.9;
+}
+
+.binder .binder-robot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin-top: 18px;
+}
+
+.binder-robot-label {
+  font-family: var(--b-font-label);
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--b-muted);
+}
+
+.binder-robot-name {
+  font-family: var(--b-font-display);
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.binder .binder-tagline {
+  max-width: 54ch;
+  margin-top: 12px;
+  color: var(--b-muted);
+  font-size: 17px;
+}
+
+/* Lambda: lined up on the left, everything squared off */
+
+/* The name fills its column without being cut off: LAMBDA is about 3.3
+   times as wide as the letters are tall */
+.binder[data-team="lambda"] .binder-hero-text {
+  container-type: inline-size;
+}
+
+.binder[data-team="lambda"] .binder-title {
+  font-size: min(29cqi, 210px);
+  font-weight: 900;
+  letter-spacing: 0.005em;
+  text-transform: uppercase;
+  padding-top: 0.04em;
+}
+
+.binder[data-team="lambda"] .binder-robot-name {
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.binder[data-team="lambda"] .binder-hero-art {
+  padding: 18px;
+  /* Blueprint corner marks around the photo */
+  --mark: rgba(199, 194, 184, 0.55);
+  background:
+    linear-gradient(var(--mark), var(--mark)) top left / 22px 1.5px no-repeat,
+    linear-gradient(var(--mark), var(--mark)) top left / 1.5px 22px no-repeat,
+    linear-gradient(var(--mark), var(--mark)) top right / 22px 1.5px no-repeat,
+    linear-gradient(var(--mark), var(--mark)) top right / 1.5px 22px no-repeat,
+    linear-gradient(var(--mark), var(--mark)) bottom left / 22px 1.5px no-repeat,
+    linear-gradient(var(--mark), var(--mark)) bottom left / 1.5px 22px no-repeat,
+    linear-gradient(var(--mark), var(--mark)) bottom right / 22px 1.5px no-repeat,
+    linear-gradient(var(--mark), var(--mark)) bottom right / 1.5px 22px no-repeat;
+}
+
+.binder[data-team="lambda"] .binder-stat {
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.025);
+  border-left: 3px solid var(--b-maroon);
+}
+
+.binder[data-team="lambda"] .binder-stat dd {
+  font-size: 26px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  line-height: 1.1;
+}
+
+@media (min-width: 900px) {
+  .binder[data-team="lambda"] .binder-hero {
+    padding: 32px 0 72px;
+  }
+
+  .binder[data-team="lambda"] .binder-hero-grid {
+    row-gap: 40px;
+  }
+
+  /* With a robot photo: the name on the left, the photo on the right */
+  .binder[data-team="lambda"] .binder-hero-grid:has(.binder-hero-art) {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    column-gap: 48px;
+    align-items: center;
+  }
+
+  .binder[data-team="lambda"] .binder-hero-grid:has(.binder-hero-art) > .binder-stats {
+    grid-column: 1 / -1;
+  }
+
+  .binder[data-team="lambda"] .binder-hero-art {
+    justify-self: end;
+  }
+}
+
+/* Gamma: Lambda's layout mirrored, everything lined up on the right */
+
+.binder[data-team="gamma"] .binder-hero {
+  text-align: right;
+}
+
+.binder[data-team="gamma"] .binder-hero-grid {
+  justify-items: end;
+}
+
+.binder[data-team="gamma"] .binder-hero-art img {
+  border-radius: 24px;
+}
+
+.binder[data-team="gamma"] .binder-title {
+  font-size: clamp(54px, 15vw, 150px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  padding: 0.02em 0 0.08em;
+}
+
+.binder[data-team="gamma"] .binder-robot {
+  justify-content: flex-end;
+}
+
+.binder[data-team="gamma"] .binder-robot-name {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.binder[data-team="gamma"] .binder-tagline {
+  margin-left: auto;
+}
+
+.binder[data-team="gamma"] .binder-stats {
+  width: 100%;
+}
+
+.binder[data-team="gamma"] .binder-stat {
+  padding: 14px 16px;
+  background: var(--b-card);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 20px;
+  box-shadow: 0 10px 30px -18px rgba(21, 24, 28, 0.4);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.binder[data-team="gamma"] .binder-stat dt {
+  letter-spacing: 0.1em;
+  font-weight: 500;
+}
+
+.binder[data-team="gamma"] .binder-stat dd {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+@media (min-width: 900px) {
+  .binder[data-team="gamma"] .binder-hero {
+    padding: 32px 0 72px;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Sections and their entries                                          */
+/* ------------------------------------------------------------------ */
+
+.binder-section {
+  padding: 56px 0;
+}
+
+.binder-entry {
+  scroll-margin-top: 16px;
+}
+
+.binder-section-head {
+  display: grid;
+  gap: 8px 20px;
+  margin-bottom: 32px;
+}
+
+.binder-section-head h2 {
+  font-family: var(--b-font-display);
+  line-height: 1;
+}
+
+.binder .binder-section-intro {
+  max-width: 60ch;
+  margin-top: 10px;
+  color: var(--b-muted);
+  font-size: 17px;
+}
+
+/* At most two side by side, so there's room for photos and no lone card */
+.binder-entries {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 20px;
+}
+
+.binder-entry h3 {
+  font-family: var(--b-font-display);
+  line-height: 1.1;
+}
+
+.binder-entry-summary {
+  margin-top: 10px;
+  color: var(--b-muted);
+}
+
+/* Members write these in the hub's editor: keep their line breaks and
+   paragraphs */
+.binder .binder-tagline,
+.binder .binder-section-intro,
+.binder .binder-entry-summary {
+  white-space: pre-line;
+}
+
+/* The binder didn't load, or there's no such season */
+.binder-problem {
+  font-size: 17px;
+}
+
+.binder .binder-problem-action {
+  margin-top: 16px;
+}
+
+.binder[data-team="lambda"] .binder-problem a {
+  color: var(--b-ember);
+}
+
+.binder[data-team="gamma"] .binder-problem {
+  text-align: right;
+}
+
+.binder[data-team="gamma"] .binder-problem a {
+  color: var(--b-graphite);
+  font-weight: 600;
+}
+
+.binder-entry h4 {
+  margin-top: 20px;
+  margin-bottom: 8px;
+  font-family: var(--b-font-label);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.binder-features li {
+  position: relative;
+  padding-left: 24px;
+}
+
+.binder-features li + li {
+  margin-top: 6px;
+}
+
+.binder-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.binder-figures img {
+  width: 100%;
+  height: auto;
+}
+
+.binder-figures figcaption {
+  margin-top: 6px;
+  color: var(--b-muted);
+  font-size: 13px;
+}
+
+.binder-sponsor-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr));
+  gap: 12px;
+}
+
+.binder-sponsor {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 96px;
+  padding: 16px;
+  text-align: center;
+  color: var(--b-muted);
+}
+
+.binder-sponsor a {
+  text-decoration: none;
+}
+
+.binder-sponsor img {
+  max-height: 64px;
+  object-fit: contain;
+}
+
+.binder-footer {
+  padding: 36px 0 48px;
+  border-top: 1px solid var(--b-line);
+  color: var(--b-muted);
+  font-size: 14px;
+}
+
+/* Lambda: big outlined numbers, squared cards with one corner cut */
+
+.binder[data-team="lambda"] .binder-section {
+  border-top: 1px solid var(--b-line);
+}
+
+.binder[data-team="lambda"] .binder-section-head {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: end;
+}
+
+.binder[data-team="lambda"] .binder-sponsors .binder-section-head {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.binder[data-team="lambda"] .binder-section-number {
+  font-family: var(--b-font-display);
+  font-size: clamp(72px, 14vw, 120px);
+  font-weight: 900;
+  line-height: 0.78;
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--b-ember);
+}
+
+.binder[data-team="lambda"] .binder-section-head h2 {
+  font-size: clamp(44px, 8vw, 72px);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.binder[data-team="lambda"] .binder-entry {
+  position: relative;
+  padding: 26px 26px 28px;
+  background: linear-gradient(225deg, transparent 0 18px, var(--b-card) 18px);
+  border-left: 3px solid var(--b-maroon);
+  transition: border-color 0.25s ease;
+}
+
+/* A thin line across the cut corner */
+.binder[data-team="lambda"] .binder-entry::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 26px;
+  height: 26px;
+  background: linear-gradient(
+    45deg,
+    transparent calc(50% - 0.75px),
+    rgba(226, 71, 91, 0.8) calc(50% - 0.75px) calc(50% + 0.75px),
+    transparent calc(50% + 0.75px)
+  );
+}
+
+.binder[data-team="lambda"] .binder-entry:hover {
+  border-left-color: var(--b-ember);
+}
+
+.binder[data-team="lambda"] .binder-entry h3 {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.binder[data-team="lambda"] .binder-entry h4 {
+  color: var(--b-ember);
+}
+
+.binder[data-team="lambda"] .binder-features li::before {
+  content: "/";
+  position: absolute;
+  left: 4px;
+  top: 0;
+  color: var(--b-ember);
+  font-family: var(--b-font-label);
+  font-weight: 700;
+}
+
+.binder[data-team="lambda"] .binder-sponsor {
+  border: 1px dashed rgba(199, 194, 184, 0.3);
+  font-family: var(--b-font-label);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.binder[data-team="lambda"] .binder-footer {
+  font-family: var(--b-font-label);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Gamma: headings on the right in wide lettering (Lambda's mirrored, so the
+   number sits to the right of the title), rounded frosted cards */
+
+.binder[data-team="gamma"] .binder-section-head {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  text-align: right;
+}
+
+.binder[data-team="gamma"] .binder-section-head .binder-section-number {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.binder[data-team="gamma"] .binder-section-intro {
+  margin-left: auto;
+}
+
+.binder[data-team="gamma"] .binder-section-number {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1.5px solid var(--b-graphite);
+  border-radius: 50%;
+  font-family: var(--b-font-display);
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 0 0 6px rgba(35, 40, 46, 0.06);
+}
+
+.binder[data-team="gamma"] .binder-section-head h2 {
+  font-size: clamp(32px, 6vw, 52px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.binder[data-team="gamma"] .binder-entry {
+  padding: 28px;
+  background: var(--b-card);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 26px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 18px 40px -24px rgba(21, 24, 28, 0.45);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  transition: box-shadow 0.3s ease, background-color 0.3s ease;
+}
+
+.binder[data-team="gamma"] .binder-entry:hover {
+  background: rgba(255, 255, 255, 0.75);
+  box-shadow:
+    inset 0 1px 0 #ffffff,
+    0 24px 48px -24px rgba(21, 24, 28, 0.5);
+}
+
+.binder[data-team="gamma"] .binder-entry h3 {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.binder[data-team="gamma"] .binder-entry h4 {
+  color: var(--b-graphite);
+}
+
+.binder[data-team="gamma"] .binder-features li::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 0.55em;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--b-graphite);
+  border-radius: 50%;
+}
+
+.binder[data-team="gamma"] .binder-figures img {
+  border-radius: 16px;
+}
+
+.binder[data-team="gamma"] .binder-sponsor {
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 22px;
+  font-weight: 500;
+}
+
+.binder[data-team="gamma"] .binder-footer {
+  text-align: right;
+}
+
+/* ------------------------------------------------------------------ */
+/* Paper                                                               */
+/* ------------------------------------------------------------------ */
+
+@media print {
+  .binder-past {
+    display: none;
+  }
+}
