@@ -7,26 +7,21 @@ import "@fontsource-variable/geist-mono";
 import "@fontsource-variable/unbounded";
 import "@fontsource-variable/space-grotesk";
 import "./binder.css";
-import {
-  TEAM_NAMES,
-  cachedBinder,
-  loadBinder,
-  type Binder,
-  type BinderSection,
-  type Sponsor,
-  type TeamBinder,
-  type TeamId,
-} from "./content";
+import { TEAM_NAMES, cachedBinder, loadBinder, type Binder, type PageContent, type TeamId } from "./content";
+import { Canvas } from "./Canvas";
+import { numberedHeadings } from "./layout";
+import { useLook } from "./look";
 import { LambertLogo } from "./LambertLogo";
 import { TopBar, type ContentsLink } from "../TopBar";
 import { hubPath } from "../paths";
 
 /*
  * The hub's front page: the public technical binder, for judges and
- * sponsors. The team logo at the top (LambertLogo.tsx) picks Lambda's
- * binder or Gamma's. Each has its own look (binder.css): same content shape,
- * different lettering, colour and background. The open binder's
- * sections are links in the top bar.
+ * sponsors. The team logo at the top (LambertLogo.tsx) picks Lambda's page
+ * or Gamma's. Each team's look (lettering, colour, background) is in
+ * binder.css; what's on the page and where is up to the editors (Edit
+ * Binder, src/binder-editor), drawn by Canvas.tsx. The page's numbered
+ * headings are links in the top bar.
  *
  * The content comes from ManuQueue's server (content.ts). ?season= in the
  * address opens a past season; Past seasons lists them.
@@ -40,7 +35,7 @@ function isTeam(value: unknown): value is TeamId {
 
 /** ?team= in the address wins (so a link can open either), then the last
  *  one picked on this device, then Lambda */
-function initialTeam(): TeamId {
+export function initialTeam(): TeamId {
   const fromAddress = new URLSearchParams(window.location.search).get("team");
   if (isTeam(fromAddress)) return fromAddress;
   try {
@@ -50,6 +45,18 @@ function initialTeam(): TeamId {
     // Blocked storage: falls through
   }
   return "lambda";
+}
+
+/** Remembers the team picked, and puts it in the address */
+export function rememberTeam(team: TeamId) {
+  try {
+    localStorage.setItem(STORED_TEAM, team);
+  } catch {
+    // Blocked storage: the address still has it
+  }
+  const url = new URL(window.location.href);
+  url.searchParams.set("team", team);
+  history.replaceState(history.state, "", url);
 }
 
 /** ?season= in the address, or null for this season's */
@@ -63,15 +70,46 @@ function seasonHref(season: number | null, team: TeamId): string {
   return `${hubPath("/")}?team=${team}${season === null ? "" : `&season=${season}`}`;
 }
 
-/** 01, 02, ... for the section numbers */
-function twoDigits(n: number): string {
-  return String(n).padStart(2, "0");
+/** The top bar's links to a page's numbered headings, and its sponsors */
+export function pageContents(page: PageContent | null): ContentsLink[] {
+  if (!page) return [];
+  return [
+    ...numberedHeadings(page.elements).map((heading) => ({
+      label: heading.title,
+      href: `#${heading.anchor}`,
+      number: heading.number,
+    })),
+    ...(page.elements.some((e) => e.type === "sponsors")
+      ? [{ label: "Sponsors", href: "#sponsors" }]
+      : []),
+  ];
 }
 
 /** A plain click on a link, which this page handles itself (not one meant
  *  for a new tab) */
 function isPlainClick(event: MouseEvent): boolean {
   return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+}
+
+export function BinderFooter({ numbers }: { numbers?: Record<TeamId, number> }) {
+  return (
+    <footer className="binder-footer">
+      <div className="binder-wrap">
+        <p>Lambert Robotics, Lambert High School</p>
+        <p>
+          {numbers
+            ? `FRC Teams ${numbers.lambda} ${TEAM_NAMES.lambda} and ${numbers.gamma} ${TEAM_NAMES.gamma}`
+            : `FRC Teams ${TEAM_NAMES.lambda} and ${TEAM_NAMES.gamma}`}
+        </p>
+      </div>
+    </footer>
+  );
+}
+
+/** Each team's number, from whichever pages have one */
+export function teamNumbers(pages: Record<TeamId, PageContent | null>): Record<TeamId, number> | undefined {
+  if (!pages.lambda || !pages.gamma) return undefined;
+  return { lambda: pages.lambda.number, gamma: pages.gamma.number };
 }
 
 type Problem = { missing: boolean; error: string };
@@ -83,7 +121,7 @@ export function BinderPage() {
   const [binder, setBinder] = useState<Binder | null>(() => cachedBinder(seasonFromAddress()));
   const [problem, setProblem] = useState<Problem | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const teamBinder = binder?.binders[team] ?? null;
+  const page = binder?.pages[team] ?? null;
 
   useEffect(() => {
     let cancelled = false;
@@ -114,37 +152,32 @@ export function BinderPage() {
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
-  // The page behind the binder (seen past the ends when scrolling) matches it
+  // The page's look, and the page behind it (seen past the ends when
+  // scrolling) to match
+  const { look, style } = useLook(page?.theme, team);
+
   useLayoutEffect(() => {
-    document.documentElement.dataset.binderTeam = team;
     const name = TEAM_NAMES[team];
     const past = binder && binder.state !== "live" ? ` ${binder.season}` : "";
-    document.title = teamBinder
-      ? `${name} ${teamBinder.number}${past} | Lambert Robotics`
+    document.title = page
+      ? `${name} ${page.number}${past} | Lambert Robotics`
       : `${name} | Lambert Robotics`;
-  }, [team, binder, teamBinder]);
+  }, [team, binder, page]);
 
   // A link to a section (#mechanical) on a first visit: the browser looked
   // for it before the binder arrived, so go there once it's drawn
   const wentToHash = useRef(false);
   useEffect(() => {
-    if (!teamBinder || wentToHash.current) return;
+    if (!page || wentToHash.current) return;
     wentToHash.current = true;
     const id = decodeURIComponent(window.location.hash.slice(1));
-    if (id) document.getElementById(id)?.scrollIntoView();
-  }, [teamBinder]);
+    if (id) requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView());
+  }, [page]);
 
   // Switches straight away; the logo's gear is the only thing that moves
   function switchTo(next: TeamId) {
     if (next === team) return;
-    try {
-      localStorage.setItem(STORED_TEAM, next);
-    } catch {
-      // Blocked storage: the address still has it
-    }
-    const url = new URL(window.location.href);
-    url.searchParams.set("team", next);
-    history.replaceState(history.state, "", url);
+    rememberTeam(next);
     setTeam(next);
     window.scrollTo({ top: 0, behavior: "instant" });
   }
@@ -160,21 +193,10 @@ export function BinderPage() {
     window.scrollTo({ top: 0, behavior: "instant" });
   }
 
-  const contents: ContentsLink[] = teamBinder
-    ? [
-        ...teamBinder.sections.map((section, index) => ({
-          label: section.title,
-          href: `#${section.id}`,
-          number: twoDigits(index + 1),
-        })),
-        ...(binder && binder.sponsors.length > 0 ? [{ label: "Sponsors", href: "#sponsors" }] : []),
-      ]
-    : [];
-
   return (
     <>
-      <TopBar contents={contents} />
-      <div className="binder" data-team={team}>
+      <TopBar contents={pageContents(page)} />
+      <div className="binder" data-look={look} style={style}>
         {/* The team picker. Outside <main>, so it stays put (and its gear keeps
             turning) when the team changes */}
         <div className="binder-wrap binder-logo-wrap">
@@ -182,11 +204,7 @@ export function BinderPage() {
           <LambertLogo
             team={team}
             onPick={switchTo}
-            numbers={
-              binder
-                ? { lambda: binder.binders.lambda.number, gamma: binder.binders.gamma.number }
-                : undefined
-            }
+            numbers={binder ? teamNumbers(binder.pages) : undefined}
           />
         </div>
 
@@ -194,15 +212,9 @@ export function BinderPage() {
           <SeasonNote binder={binder} team={team} onOpen={openSeason} />
         )}
 
-        <main>
-          {teamBinder && binder ? (
-            <>
-              <Hero binder={teamBinder} />
-              {teamBinder.sections.map((section, index) => (
-                <Section key={section.id} section={section} number={index + 1} />
-              ))}
-              {binder.sponsors.length > 0 && <Sponsors sponsors={binder.sponsors} />}
-            </>
+        <main className="binder-wrap binder-main">
+          {page && binder ? (
+            <Canvas page={page} sponsors={binder.sponsors} />
           ) : problem ? (
             <ProblemNote
               problem={problem}
@@ -210,150 +222,22 @@ export function BinderPage() {
               onRetry={() => setAttempt((n) => n + 1)}
               onOpen={openSeason}
             />
+          ) : binder ? (
+            <p className="binder-unpublished">
+              {TEAM_NAMES[team]}'s page for {binder.season} isn't up yet.
+            </p>
           ) : (
             // Waiting for the server on a first visit: the team's name, so
             // the page isn't empty
-            <header className="binder-hero" aria-busy="true">
-              <div className="binder-wrap binder-hero-grid">
-                <div className="binder-hero-text">
-                  <h1 className="binder-title">{TEAM_NAMES[team]}</h1>
-                </div>
-              </div>
-            </header>
+            <h1 className="bp-text bp-title bp-waiting" aria-busy="true">
+              {TEAM_NAMES[team]}
+            </h1>
           )}
         </main>
 
-        <footer className="binder-footer">
-          <div className="binder-wrap">
-            <p>Lambert Robotics, Lambert High School</p>
-            <p>
-              {binder
-                ? `FRC Teams ${binder.binders.lambda.number} ${TEAM_NAMES.lambda} and ${binder.binders.gamma.number} ${TEAM_NAMES.gamma}`
-                : `FRC Teams ${TEAM_NAMES.lambda} and ${TEAM_NAMES.gamma}`}
-            </p>
-          </div>
-        </footer>
+        <BinderFooter numbers={binder ? teamNumbers(binder.pages) : undefined} />
       </div>
     </>
-  );
-}
-
-function Hero({ binder }: { binder: TeamBinder }) {
-  const { robot } = binder;
-  return (
-    <header className="binder-hero">
-      <div className="binder-wrap binder-hero-grid">
-        <div className="binder-hero-text">
-          <h1 className="binder-title">
-            {binder.name}
-          </h1>
-          <p className="binder-robot">
-            <span className="binder-robot-label">{binder.season}</span>
-            {robot.name && <span className="binder-robot-name">{robot.name}</span>}
-          </p>
-          {robot.tagline && <p className="binder-tagline">{robot.tagline}</p>}
-        </div>
-
-        {robot.image && (
-          <div className="binder-hero-art">
-            <img src={robot.image.src} alt={robot.image.alt} />
-          </div>
-        )}
-
-        {robot.stats.length > 0 && (
-          <dl className="binder-stats">
-            {robot.stats.map((stat, index) => (
-              <div key={index} className="binder-stat">
-                <dt>{stat.label}</dt>
-                <dd>{stat.value}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
-
-      </div>
-    </header>
-  );
-}
-
-function Section({ section, number }: { section: BinderSection; number: number }) {
-  const titleId = `${section.id}-title`;
-  return (
-    <section className="binder-section" id={section.id} aria-labelledby={titleId}>
-      <div className="binder-wrap">
-        <header className="binder-section-head">
-          <span className="binder-section-number" aria-hidden="true">
-            {twoDigits(number)}
-          </span>
-          <div>
-            <h2 id={titleId}>{section.title}</h2>
-            {section.intro && <p className="binder-section-intro">{section.intro}</p>}
-          </div>
-        </header>
-
-        <div className="binder-entries">
-          {section.entries.map((entry) => (
-            <article key={entry.id} id={entry.id} className="binder-entry">
-              <h3>{entry.title}</h3>
-              {entry.summary && <p className="binder-entry-summary">{entry.summary}</p>}
-              {entry.features.length > 0 && (
-                <>
-                  <h4>Features</h4>
-                  <ul className="binder-features">
-                    {entry.features.map((feature, featureIndex) => (
-                      <li key={featureIndex}>{feature}</li>
-                    ))}
-                  </ul>
-                </>
-              )}
-              {entry.images.length > 0 && (
-                <div className="binder-figures">
-                  {entry.images.map((image, imageIndex) => (
-                    <figure key={imageIndex}>
-                      <img src={image.src} alt={image.alt} loading="lazy" />
-                      {image.caption && <figcaption>{image.caption}</figcaption>}
-                    </figure>
-                  ))}
-                </div>
-              )}
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Sponsors({ sponsors }: { sponsors: Sponsor[] }) {
-  return (
-    <section className="binder-section binder-sponsors" id="sponsors" aria-labelledby="sponsors-title">
-      <div className="binder-wrap">
-        <header className="binder-section-head">
-          <div>
-            <h2 id="sponsors-title">Our sponsors</h2>
-            <p className="binder-section-intro">
-              Thank you to the companies and families who make both robots possible.
-            </p>
-          </div>
-        </header>
-        <ul className="binder-sponsor-list">
-          {sponsors.map((sponsor, index) => {
-            const face = sponsor.logo ? <img src={sponsor.logo.src} alt={sponsor.name} /> : sponsor.name;
-            return (
-              <li key={index} className="binder-sponsor">
-                {sponsor.url ? (
-                  <a href={sponsor.url} target="_blank" rel="noopener noreferrer">
-                    {face}
-                  </a>
-                ) : (
-                  face
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-    </section>
   );
 }
 
@@ -398,7 +282,7 @@ function SeasonNote({ binder, team, onOpen }: { binder: Binder; team: TeamId; on
             <span>
               The {binder.season} season isn't up yet. Only people who can edit the binder see it.
             </span>
-            <a href={`${hubPath("/edit-binder/")}?season=${binder.season}`}>Edit it</a>
+            <a href={`${hubPath("/edit-binder/")}?season=${binder.season}&team=${team}`}>Edit it</a>
           </>
         ) : (
           <>
@@ -425,21 +309,19 @@ function ProblemNote({
   onOpen: OpenSeason;
 }) {
   return (
-    <section className="binder-section binder-problem" role="alert">
-      <div className="binder-wrap">
-        <p>{problem.error}</p>
-        {problem.missing ? (
-          <p className="binder-problem-action">
-            <SeasonLink season={null} team={team} onOpen={onOpen}>
-              See this season's binder
-            </SeasonLink>
-          </p>
-        ) : (
-          <button type="button" className="binder-past-button binder-problem-action" onClick={onRetry}>
-            Try again
-          </button>
-        )}
-      </div>
+    <section className="binder-problem" role="alert">
+      <p>{problem.error}</p>
+      {problem.missing ? (
+        <p className="binder-problem-action">
+          <SeasonLink season={null} team={team} onOpen={onOpen}>
+            See this season's binder
+          </SeasonLink>
+        </p>
+      ) : (
+        <button type="button" className="binder-past-button binder-problem-action" onClick={onRetry}>
+          Try again
+        </button>
+      )}
     </section>
   );
 }

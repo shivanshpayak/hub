@@ -1,52 +1,34 @@
 import { hubPath } from "../paths";
-import type { SeasonState, TeamId } from "../binder/content";
+import type { PageContent, PageImage, SeasonState, TeamId } from "../binder/content";
 
 /*
  * The binder editor's calls to ManuQueue's /api/binder routes
- * (manu-orders/src/lib/binder.ts has the rules). Each part (a team's robot,
- * one section, the sponsors) saves on its own with the rev it was loaded at;
- * if someone else saved it since, the server answers with theirs instead.
+ * (manu-orders/src/lib/binder.ts has the rules). A page's draft saves on its
+ * own as people work; Publish puts it up. One editor tab holds a page at a
+ * time (`tab`), checking in every 30 seconds.
  */
 
-/** Who saved a part last, and its rev for the next save */
-export type SavedBy = { rev: number; updatedAt: string | null; updatedBy: string };
-
-export type EditorImage = { file: string; src: string; alt: string; caption: string };
-
-export type EditorEntry = {
-  id: string;
-  title: string;
-  summary: string;
-  features: string[];
-  images: EditorImage[];
+export type EditorPage = {
+  draft: PageContent;
+  rev: number;
+  updatedAt: string | null;
+  updatedBy: string;
+  /** The draft has unpublished changes while this differs from rev */
+  publishedRev: number;
+  publishedAt: string | null;
+  publishedBy: string;
 };
 
-export type SectionContent = { title: string; intro: string; entries: EditorEntry[] };
+export type EditorSponsor = { id: string; name: string; url: string; logo: PageImage | null };
 
-export type EditorSection = SavedBy & SectionContent & { id: string };
-
-export type TeamDetails = {
-  number: number;
-  robot: {
-    name: string;
-    tagline: string;
-    image: EditorImage | null;
-    stats: { label: string; value: string }[];
-  };
+export type EditorSponsors = {
+  list: EditorSponsor[];
+  /** The list differs from what visitors see, until either page is published */
+  unpublished: boolean;
+  rev: number;
+  updatedAt: string | null;
+  updatedBy: string;
 };
-
-export type EditorTeamDetails = SavedBy & TeamDetails;
-
-export type EditorTeam = {
-  team: TeamId;
-  name: string;
-  details: EditorTeamDetails;
-  sections: EditorSection[];
-};
-
-export type EditorSponsor = { id: string; name: string; url: string; logo: EditorImage | null };
-
-export type EditorSponsors = SavedBy & { list: EditorSponsor[] };
 
 export type EditorSeason = {
   season: number;
@@ -54,21 +36,27 @@ export type EditorSeason = {
   liveSeason: number;
   /** Every season, newest first */
   seasons: { season: number; state: SeasonState }[];
-  teams: Record<TeamId, EditorTeam>;
+  pages: Record<TeamId, EditorPage>;
   sponsors: EditorSponsors;
 };
 
-type Answer<T> =
+export type Answer<T> =
   | { ok: true; data: T }
-  | { ok: false; status: number; error: string; current?: unknown };
+  | { ok: false; status: number; error: string; data?: Record<string, unknown> };
 
-const OFFLINE = "Could not reach the server. Please try again.";
+const OFFLINE = "Could not reach the server.";
 
-async function call<T>(method: string, path: string, body?: unknown): Promise<Answer<T>> {
+async function call<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+  { keepalive = false } = {},
+): Promise<Answer<T>> {
   try {
     const res = await fetch(path, {
       method,
       cache: "no-store",
+      keepalive,
       headers: body === undefined ? undefined : { "content-type": "application/json" },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
@@ -80,7 +68,7 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<An
       ok: false,
       status: res.status,
       error: data?.error ?? "Something went wrong. Please try again.",
-      current: data?.current,
+      data: data ?? undefined,
     };
   } catch {
     return { ok: false, status: 0, error: OFFLINE };
@@ -88,85 +76,56 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<An
 }
 
 const seasonPath = (season: number | "live") => `/api/binder/seasons/${season}`;
+const pagePath = (season: number, team: TeamId) => `${seasonPath(season)}/pages/${team}`;
 
-/** A saved part, a refusal, or (current) the newer one someone else saved */
-export type SaveAnswer<T> = { ok: true; value: T } | { ok: false; error: string; current?: T };
-
-function saveAnswer<T>(answer: Answer<Record<string, T>>, key: string): SaveAnswer<T> {
-  if (answer.ok) return { ok: true, value: answer.data[key] };
-  return { ok: false, error: answer.error, current: answer.current as T | undefined };
-}
+/** This tab's name, so the server can tell two tabs of one person apart */
+export const TAB = (crypto.randomUUID?.() ?? `${Date.now()}${Math.random()}`).replace(/[^A-Za-z0-9]/g, "");
 
 export function loadSeason(season: number | "live") {
   return call<EditorSeason>("GET", seasonPath(season));
 }
 
-export async function saveTeamDetails(
+/** `settled`: nothing changed but where things were measured to sit */
+export function savePage(
   season: number,
   team: TeamId,
-  details: TeamDetails,
+  page: PageContent,
   rev: number,
-  force: boolean,
-): Promise<SaveAnswer<EditorTeamDetails>> {
-  const body = {
-    rev,
-    force,
-    number: details.number,
-    robot: { ...details.robot, image: details.robot.image && stripSrc(details.robot.image) },
-  };
-  return saveAnswer(await call("PATCH", `${seasonPath(season)}/teams/${team}`, body), "details");
-}
-
-export async function addSection(
-  season: number,
-  team: TeamId,
-  title: string,
-): Promise<SaveAnswer<EditorSection>> {
-  return saveAnswer(await call("POST", `${seasonPath(season)}/sections`, { team, title }), "section");
-}
-
-export async function saveSection(
-  season: number,
-  id: string,
-  section: SectionContent,
-  rev: number,
-  force: boolean,
-): Promise<SaveAnswer<EditorSection>> {
-  const body = {
-    rev,
-    force,
-    title: section.title,
-    intro: section.intro,
-    entries: section.entries.map((entry) => ({ ...entry, images: entry.images.map(stripSrc) })),
-  };
-  return saveAnswer(
-    await call("PATCH", `${seasonPath(season)}/sections/${encodeURIComponent(id)}`, body),
-    "section",
+  settled: boolean,
+) {
+  return call<{ rev: number; updatedAt: string; publishedRev: number }>(
+    "PUT",
+    pagePath(season, team),
+    { rev, tab: TAB, settled, page },
   );
 }
 
-export function deleteSection(season: number, id: string) {
-  return call<unknown>("DELETE", `${seasonPath(season)}/sections/${encodeURIComponent(id)}`);
+/** Takes or keeps the page; 423 with data.heldBy while someone else has it */
+export function lockPage(season: number, team: TeamId, takeOver = false) {
+  return call<{ ok: true }>("POST", `${pagePath(season, team)}/lock`, { tab: TAB, takeOver });
 }
 
-export function orderSections(season: number, team: TeamId, order: string[]) {
-  return call<unknown>("PUT", `${seasonPath(season)}/teams/${team}/order`, { order });
+/** Lets go of the page, even as the tab closes */
+export function unlockPage(season: number, team: TeamId) {
+  return call<{ ok: true }>("DELETE", `${pagePath(season, team)}/lock?tab=${TAB}`, undefined, {
+    keepalive: true,
+  });
 }
 
-export async function saveSponsors(
-  season: number,
-  list: EditorSponsor[],
-  rev: number,
-  force: boolean,
-): Promise<SaveAnswer<EditorSponsors>> {
-  const sponsors = list.map((sponsor) => ({
-    ...sponsor,
-    logo: sponsor.logo && stripSrc(sponsor.logo),
-  }));
-  return saveAnswer(
-    await call("PUT", `${seasonPath(season)}/sponsors`, { rev, force, sponsors }),
-    "sponsors",
+export function publishPage(season: number, team: TeamId, rev: number) {
+  return call<{ publishedRev: number; publishedAt: string }>(
+    "POST",
+    `${pagePath(season, team)}/publish`,
+    { rev, tab: TAB },
   );
+}
+
+export function saveSponsors(season: number, list: EditorSponsor[], rev: number, force: boolean) {
+  return call<{ sponsors: EditorSponsors }>("PUT", `${seasonPath(season)}/sponsors`, {
+    rev,
+    force,
+    sponsors: list,
+  });
 }
 
 export function startSeason(from: "copy" | "outline") {
@@ -179,11 +138,6 @@ export function makeLive(season: number) {
 
 export function deleteSeason(season: number) {
   return call<unknown>("DELETE", seasonPath(season));
-}
-
-/** The server makes src itself; only the file name is saved */
-function stripSrc({ file, alt, caption }: EditorImage) {
-  return { file, alt, caption };
 }
 
 /* ------------------------------------------------------------------ */
@@ -258,8 +212,10 @@ async function prepareImage(file: File): Promise<Blob | { error: string }> {
   return blob;
 }
 
-/** Uploads one picture. Its alt text and caption start empty */
-export async function uploadImage(file: File): Promise<{ ok: true; image: EditorImage } | { ok: false; error: string }> {
+/** Uploads one picture. Its description and caption start empty */
+export async function uploadImage(
+  file: File,
+): Promise<{ ok: true; image: PageImage } | { ok: false; error: string }> {
   const prepared = await prepareImage(file);
   if (!(prepared instanceof Blob)) return { ok: false, error: prepared.error };
 
@@ -272,8 +228,21 @@ export async function uploadImage(file: File): Promise<{ ok: true; image: Editor
     if (!res.ok) {
       return { ok: false, error: `${file.name}: ${data?.error ?? "it didn't upload. Please try again."}` };
     }
-    return { ok: true, image: { file: data.file, src: data.src, alt: "", caption: "" } };
+    return { ok: true, image: { file: data.file, alt: "", caption: "" } };
   } catch {
     return { ok: false, error: `${file.name}: ${OFFLINE}` };
   }
+}
+
+/** Opens the file picker; resolves with the files chosen (none if closed) */
+export function chooseFiles(multiple: boolean): Promise<File[]> {
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = IMAGE_ACCEPT;
+    input.multiple = multiple;
+    input.addEventListener("change", () => resolve([...(input.files ?? [])]), { once: true });
+    input.addEventListener("cancel", () => resolve([]), { once: true });
+    input.click();
+  });
 }

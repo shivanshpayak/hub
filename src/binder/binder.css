@@ -1,6 +1,7 @@
 /*
- * The front page binder (BinderPage.tsx). The layout is shared; each team
- * sets its own look on .binder[data-team]:
+ * The front page binder (BinderPage.tsx). The layout is shared; the look is
+ * set on .binder[data-look], which is the team's own unless an editor picks
+ * the other (src/binder/look.ts):
  *
  *   Lambda: dark and warm. Maroon on near black, a blueprint grid, tall
  *   condensed capitals (Big Shoulders) and sharp cut corners.
@@ -13,14 +14,21 @@
  *
  * Neither follows the hub's light or dark setting: each team's look is its
  * own. All movement stops for visitors whose device asks for less motion.
+ *
+ * Editors can change a page's background, colours, fonts and text size
+ * (look.ts). Those land as inline values for the custom properties below,
+ * so every rule here reads them: --b-text, --b-muted, --b-accent (and
+ * --b-accent-deep, Lambda's maroon), --b-card, --b-panel, --b-line,
+ * --b-page (the background) and --b-page-color, the fonts, --b-scale, and
+ * the logo's --logo-page, --logo-line and --logo-gear.
  */
 
-html[data-binder-team="lambda"] {
+html[data-binder-look="lambda"] {
   background: #0e0708;
   scrollbar-color: #5a1f29 #0e0708;
 }
 
-html[data-binder-team="gamma"] {
+html[data-binder-look="gamma"] {
   background: #dcd8d0;
   scrollbar-color: #a19d95 #e4e1db;
 }
@@ -105,15 +113,23 @@ html:has(.binder) {
 /* Lambda's look                                                       */
 /* ------------------------------------------------------------------ */
 
-.binder[data-team="lambda"] {
+.binder[data-look="lambda"] {
   --b-text: #f3eee7;
   --b-muted: #b9b1a6;
-  --b-maroon: #8e1b2b;
-  --b-ember: #e2475b;
+  --b-accent: #e2475b;
+  --b-accent-deep: #8e1b2b;
+  --b-ember: var(--b-accent);
+  --b-maroon: var(--b-accent-deep);
   --b-silver: #c7c2b8;
   --b-line: rgba(199, 194, 184, 0.14);
   --b-card: #170a0d;
-  --b-focus: #e2475b;
+  --b-panel: #1a0c0f;
+  --b-focus: var(--b-accent);
+  --b-scale: 1;
+  --b-page-color: #0e0708;
+  --logo-page: #0e0708;
+  --logo-line: rgba(199, 194, 184, 0.55);
+  --logo-gear: rgba(199, 194, 184, 0.45);
   --b-font-display: "Big Shoulders Variable", "Barlow Condensed", "Arial Narrow", sans-serif;
   --b-font-body: "Geist Variable", system-ui, sans-serif;
   --b-font-label: "Geist Mono Variable", ui-monospace, monospace;
@@ -129,14 +145,22 @@ html:has(.binder) {
 /* Gamma's look                                                        */
 /* ------------------------------------------------------------------ */
 
-.binder[data-team="gamma"] {
+.binder[data-look="gamma"] {
   --b-text: #15181c;
   --b-muted: #4f555d;
-  --b-graphite: #23282e;
+  --b-accent: #23282e;
+  --b-accent-deep: #23282e;
+  --b-graphite: var(--b-accent);
   --b-silver: #c7c2b8;
   --b-line: rgba(21, 24, 28, 0.12);
   --b-card: rgba(255, 255, 255, 0.55);
-  --b-focus: #23282e;
+  --b-panel: rgba(250, 249, 247, 0.96);
+  --b-focus: var(--b-accent);
+  --b-scale: 1;
+  --b-page-color: #e3e0da;
+  --logo-page: #f1efeb;
+  --logo-line: rgba(35, 40, 46, 0.45);
+  --logo-gear: rgba(35, 40, 46, 0.32);
   --b-font-display: "Unbounded Variable", system-ui, sans-serif;
   --b-font-body: "Space Grotesk Variable", system-ui, sans-serif;
   --b-font-label: "Space Grotesk Variable", system-ui, sans-serif;
@@ -182,27 +206,27 @@ html:has(.binder) {
   cursor: pointer;
 }
 
-.binder[data-team="lambda"] .binder-past-button {
+.binder[data-look="lambda"] .binder-past-button {
   border-color: rgba(199, 194, 184, 0.35);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-size: 12px;
 }
 
-.binder[data-team="lambda"] .binder-past-button:hover,
-.binder[data-team="lambda"] .binder-past-button[aria-expanded="true"] {
+.binder[data-look="lambda"] .binder-past-button:hover,
+.binder[data-look="lambda"] .binder-past-button[aria-expanded="true"] {
   border-color: var(--b-ember);
   color: #ffffff;
 }
 
-.binder[data-team="gamma"] .binder-past-button {
+.binder[data-look="gamma"] .binder-past-button {
   border-color: rgba(21, 24, 28, 0.2);
   border-radius: 999px;
   font-weight: 500;
 }
 
-.binder[data-team="gamma"] .binder-past-button:hover,
-.binder[data-team="gamma"] .binder-past-button[aria-expanded="true"] {
+.binder[data-look="gamma"] .binder-past-button:hover,
+.binder[data-look="gamma"] .binder-past-button[aria-expanded="true"] {
   background: rgba(255, 255, 255, 0.7);
 }
 
@@ -221,14 +245,14 @@ html:has(.binder) {
   color: var(--b-muted);
 }
 
-.binder[data-team="lambda"] .binder-past-panel {
-  background: #1a0c0f;
-  border: 1px solid rgba(142, 27, 43, 0.8);
+.binder[data-look="lambda"] .binder-past-panel {
+  background: var(--b-panel);
+  border: 1px solid color-mix(in srgb, var(--b-accent-deep) 80%, transparent);
   border-left: 3px solid var(--b-ember);
 }
 
-.binder[data-team="gamma"] .binder-past-panel {
-  background: rgba(250, 249, 247, 0.96);
+.binder[data-look="gamma"] .binder-past-panel {
+  background: var(--b-panel);
   border: 1px solid rgba(21, 24, 28, 0.12);
   border-radius: 18px;
   box-shadow: 0 18px 40px -16px rgba(21, 24, 28, 0.35);
@@ -247,28 +271,28 @@ html:has(.binder) {
   font-family: var(--b-font-label);
 }
 
-.binder[data-team="lambda"] .binder-past-list a {
+.binder[data-look="lambda"] .binder-past-list a {
   border-left: 2px solid transparent;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-size: 13px;
 }
 
-.binder[data-team="lambda"] .binder-past-list a:hover,
-.binder[data-team="lambda"] .binder-past-list a[aria-current="page"] {
+.binder[data-look="lambda"] .binder-past-list a:hover,
+.binder[data-look="lambda"] .binder-past-list a[aria-current="page"] {
   border-left-color: var(--b-ember);
-  background: rgba(142, 27, 43, 0.35);
+  background: color-mix(in srgb, var(--b-accent-deep) 35%, transparent);
   color: #ffffff;
 }
 
-.binder[data-team="gamma"] .binder-past-list a {
+.binder[data-look="gamma"] .binder-past-list a {
   border-radius: 10px;
   font-weight: 500;
 }
 
-.binder[data-team="gamma"] .binder-past-list a:hover,
-.binder[data-team="gamma"] .binder-past-list a[aria-current="page"] {
-  background: rgba(35, 40, 46, 0.08);
+.binder[data-look="gamma"] .binder-past-list a:hover,
+.binder[data-look="gamma"] .binder-past-list a[aria-current="page"] {
+  background: color-mix(in srgb, var(--b-accent) 8%, transparent);
 }
 
 /* ------------------------------------------------------------------ */
@@ -290,9 +314,9 @@ html:has(.binder) {
   white-space: nowrap;
 }
 
-.binder[data-team="lambda"] .binder-season-note {
-  background: #1a0c0f;
-  border: 1px solid rgba(142, 27, 43, 0.8);
+.binder[data-look="lambda"] .binder-season-note {
+  background: var(--b-panel);
+  border: 1px solid color-mix(in srgb, var(--b-accent-deep) 80%, transparent);
   border-left: 3px solid var(--b-ember);
   font-family: var(--b-font-label);
   font-size: 12px;
@@ -300,12 +324,12 @@ html:has(.binder) {
   text-transform: uppercase;
 }
 
-.binder[data-team="lambda"] .binder-season-note a {
+.binder[data-look="lambda"] .binder-season-note a {
   color: var(--b-ember);
 }
 
 /* Gamma's mirrors Lambda's: the line on the right */
-.binder[data-team="gamma"] .binder-season-note {
+.binder[data-look="gamma"] .binder-season-note {
   flex-direction: row-reverse;
   background: rgba(255, 255, 255, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.9);
@@ -317,7 +341,7 @@ html:has(.binder) {
   font-weight: 500;
 }
 
-.binder[data-team="gamma"] .binder-season-note a {
+.binder[data-look="gamma"] .binder-season-note a {
   color: var(--b-graphite);
   font-weight: 600;
 }
@@ -344,18 +368,6 @@ html:has(.binder) {
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-}
-
-.binder[data-team="lambda"] .binder-logo {
-  --logo-page: #0e0708;
-  --logo-line: rgba(199, 194, 184, 0.55);
-  --logo-gear: rgba(199, 194, 184, 0.45);
-}
-
-.binder[data-team="gamma"] .binder-logo {
-  --logo-page: #f1efeb;
-  --logo-line: rgba(35, 40, 46, 0.45);
-  --logo-gear: rgba(35, 40, 46, 0.32);
 }
 
 .binder-logo-gear {
@@ -446,114 +458,283 @@ html:has(.binder) {
 }
 
 /* ------------------------------------------------------------------ */
-/* The top of the binder                                               */
+/* The page: things placed on a canvas (Canvas.tsx, layout.ts)         */
 /* ------------------------------------------------------------------ */
 
-.binder-hero {
+.binder-main {
+  padding-top: 24px;
+  padding-bottom: 72px;
+}
+
+/* Card text, features and the like follow the page's text size */
+.bp-frame {
   position: relative;
-  padding: 24px 0 56px;
+  font-size: calc(16px * var(--b-scale));
 }
 
-.binder-hero-grid {
-  display: grid;
-  /* Never wider than the screen, whatever the parts inside would like */
-  grid-template-columns: minmax(0, 1fr);
-  gap: 28px;
+.bp-canvas {
+  position: relative;
+  transform-origin: 0 0;
 }
 
-.binder-hero-text {
+.bp-el {
+  position: absolute;
   min-width: 0;
 }
 
-/* A photo or render of the robot, once there is one (content.ts) */
-.binder-hero-art {
-  justify-self: center;
-  width: min(100%, 420px);
+/* Where the top bar's links land, clear of the bar itself */
+.bp-anchor {
+  position: absolute;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+  scroll-margin-top: 84px;
 }
 
-.binder-hero-art img {
+/* Phones: one column, top to bottom. Sizes are capped by the column's
+   width (cqi), so the editor's phone view matches a real phone. The
+   ".binder" in front lets these beat ".binder .bp-text" further down */
+.bp-stack {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.bp-stack .bp-el {
+  position: relative;
   width: 100%;
-  height: auto;
+  scroll-margin-top: 84px;
 }
 
-.binder-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
-  gap: 12px;
+.bp-stack .bp-el:has(> .bp-heading) {
+  margin-top: 30px;
 }
 
-.binder-stat dt {
-  font-family: var(--b-font-label);
-  font-size: 12px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--b-muted);
+.binder .bp-stack .bp-title {
+  font-size: min(calc(var(--size) * var(--b-scale)), 22cqi);
 }
 
-.binder-stat dd {
-  margin-top: 4px;
+.binder .bp-stack .bp-heading {
+  font-size: min(calc(var(--size) * var(--b-scale)), 12cqi);
+}
+
+.binder .bp-stack .bp-subheading {
+  font-size: min(calc(var(--size) * var(--b-scale)), 8cqi);
+}
+
+.binder .bp-stack .bp-lead,
+.binder .bp-stack .bp-body,
+.binder .bp-stack .bp-label {
+  font-size: min(calc(var(--size) * var(--b-scale)), calc(19px * var(--b-scale)));
+}
+
+/* Side by side pictures don't fit a phone: under the text instead */
+.bp-stack .bp-card.bp-pictures-left,
+.bp-stack .bp-card.bp-pictures-right {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "body" "pics";
+}
+
+/* ------------------------------------------------------------------ */
+/* Text                                                                */
+/* ------------------------------------------------------------------ */
+
+.binder .bp-text {
+  font-size: calc(var(--size) * var(--b-scale));
+  overflow-wrap: anywhere;
+}
+
+/* A title's or heading's words never break in the middle */
+.binder .bp-title,
+.binder .bp-heading,
+.binder .bp-subheading {
+  overflow-wrap: normal;
+}
+
+.bp-text-main {
+  display: block;
+  min-width: 0;
+}
+
+.bp-align-left {
+  text-align: left;
+}
+
+.bp-align-center {
+  text-align: center;
+}
+
+.bp-align-right {
+  text-align: right;
+}
+
+.bp-title,
+.bp-heading,
+.bp-subheading {
   font-family: var(--b-font-display);
 }
 
-.binder-title {
-  font-family: var(--b-font-display);
+.bp-title {
   line-height: 0.9;
 }
 
-.binder .binder-robot {
+.bp-heading {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 12px;
-  margin-top: 18px;
+  align-items: flex-end;
+  gap: 0.28em;
+  line-height: 1;
 }
 
-.binder-robot-label {
+.bp-heading.bp-align-center {
+  justify-content: center;
+}
+
+.bp-heading.bp-align-right {
+  justify-content: flex-end;
+}
+
+.bp-number {
+  flex: none;
+  font-family: var(--b-font-display);
+}
+
+.bp-subheading {
+  line-height: 1.15;
+}
+
+/* The small text in front, like the season before the robot's name */
+.bp-kicker {
+  margin-right: 0.45em;
   font-family: var(--b-font-label);
-  font-size: 13px;
+  font-size: max(11px, 0.46em);
+  font-weight: 400;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--b-muted);
 }
 
-.binder-robot-name {
-  font-family: var(--b-font-display);
-  font-size: 28px;
-  line-height: 1.1;
+.bp-lead,
+.bp-body {
+  line-height: 1.6;
+  white-space: pre-line;
 }
 
-.binder .binder-tagline {
-  max-width: 54ch;
-  margin-top: 12px;
+.bp-lead {
   color: var(--b-muted);
-  font-size: 17px;
 }
 
-/* Lambda: lined up on the left, everything squared off */
-
-/* The name fills its column without being cut off: LAMBDA is about 3.3
-   times as wide as the letters are tall */
-.binder[data-team="lambda"] .binder-hero-text {
-  container-type: inline-size;
+.bp-label {
+  font-family: var(--b-font-label);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--b-muted);
 }
 
-.binder[data-team="lambda"] .binder-title {
-  font-size: min(29cqi, 210px);
+/* Lambda: tall capitals, outlined section numbers */
+
+.binder[data-look="lambda"] .bp-title {
   font-weight: 900;
   letter-spacing: 0.005em;
   text-transform: uppercase;
   padding-top: 0.04em;
 }
 
-.binder[data-team="lambda"] .binder-robot-name {
+.binder[data-look="lambda"] .bp-heading {
   font-weight: 800;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
-.binder[data-team="lambda"] .binder-hero-art {
+.binder[data-look="lambda"] .bp-heading .bp-number {
+  font-size: 1.67em;
+  font-weight: 900;
+  line-height: 0.78;
+  letter-spacing: 0;
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--b-ember);
+}
+
+.binder[data-look="lambda"] .bp-subheading {
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Gamma: wide lettering, the number in a ring after the title (Lambda's
+   mirrored) */
+
+.binder[data-look="gamma"] .bp-title {
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  padding: 0.02em 0 0.08em;
+}
+
+.binder[data-look="gamma"] .bp-heading {
+  align-items: center;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.binder[data-look="gamma"] .bp-heading .bp-number {
+  order: 2;
+  display: grid;
+  place-items: center;
+  /* 14px in a 46px ring on a 52px heading */
+  font-size: 0.27em;
+  width: 3.3em;
+  height: 3.3em;
+  border: 1.5px solid var(--b-graphite);
+  border-radius: 50%;
+  font-weight: 600;
+  letter-spacing: 0;
+  box-shadow: 0 0 0 0.43em color-mix(in srgb, var(--b-accent) 6%, transparent);
+}
+
+.binder[data-look="gamma"] .bp-subheading {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* ------------------------------------------------------------------ */
+/* Pictures                                                            */
+/* ------------------------------------------------------------------ */
+
+.bp-image {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.bp-image img {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.bp-image figcaption,
+.bp-card-pictures figcaption {
+  margin-top: 6px;
+  color: var(--b-muted);
+  font-size: calc(13px * var(--b-scale));
+}
+
+.bp-image-empty {
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--b-line);
+  color: var(--b-muted);
+  font-size: calc(14px * var(--b-scale));
+  text-align: center;
+}
+
+/* Lambda: blueprint corner marks around a framed picture */
+.binder[data-look="lambda"] .bp-framed {
   padding: 18px;
-  /* Blueprint corner marks around the photo */
   --mark: rgba(199, 194, 184, 0.55);
   background:
     linear-gradient(var(--mark), var(--mark)) top left / 22px 1.5px no-repeat,
@@ -566,290 +747,120 @@ html:has(.binder) {
     linear-gradient(var(--mark), var(--mark)) bottom right / 1.5px 22px no-repeat;
 }
 
-.binder[data-team="lambda"] .binder-stat {
-  padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.025);
-  border-left: 3px solid var(--b-maroon);
+/* Gamma: a framed picture gets soft corners and a frosted mat */
+.binder[data-look="gamma"] .bp-framed {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 30px;
+  box-shadow: 0 18px 40px -24px rgba(21, 24, 28, 0.45);
 }
 
-.binder[data-team="lambda"] .binder-stat dd {
-  font-size: 26px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  line-height: 1.1;
-}
-
-@media (min-width: 900px) {
-  .binder[data-team="lambda"] .binder-hero {
-    padding: 32px 0 72px;
-  }
-
-  .binder[data-team="lambda"] .binder-hero-grid {
-    row-gap: 40px;
-  }
-
-  /* With a robot photo: the name on the left, the photo on the right */
-  .binder[data-team="lambda"] .binder-hero-grid:has(.binder-hero-art) {
-    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-    column-gap: 48px;
-    align-items: center;
-  }
-
-  .binder[data-team="lambda"] .binder-hero-grid:has(.binder-hero-art) > .binder-stats {
-    grid-column: 1 / -1;
-  }
-
-  .binder[data-team="lambda"] .binder-hero-art {
-    justify-self: end;
-  }
-}
-
-/* Gamma: Lambda's layout mirrored, everything lined up on the right */
-
-.binder[data-team="gamma"] .binder-hero {
-  text-align: right;
-}
-
-.binder[data-team="gamma"] .binder-hero-grid {
-  justify-items: end;
-}
-
-.binder[data-team="gamma"] .binder-hero-art img {
-  border-radius: 24px;
-}
-
-.binder[data-team="gamma"] .binder-title {
-  font-size: clamp(54px, 15vw, 150px);
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1;
-  padding: 0.02em 0 0.08em;
-}
-
-.binder[data-team="gamma"] .binder-robot {
-  justify-content: flex-end;
-}
-
-.binder[data-team="gamma"] .binder-robot-name {
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.binder[data-team="gamma"] .binder-tagline {
-  margin-left: auto;
-}
-
-.binder[data-team="gamma"] .binder-stats {
-  width: 100%;
-}
-
-.binder[data-team="gamma"] .binder-stat {
-  padding: 14px 16px;
-  background: var(--b-card);
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  border-radius: 20px;
-  box-shadow: 0 10px 30px -18px rgba(21, 24, 28, 0.4);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-}
-
-.binder[data-team="gamma"] .binder-stat dt {
-  letter-spacing: 0.1em;
-  font-weight: 500;
-}
-
-.binder[data-team="gamma"] .binder-stat dd {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-@media (min-width: 900px) {
-  .binder[data-team="gamma"] .binder-hero {
-    padding: 32px 0 72px;
-  }
+.binder[data-look="gamma"] .bp-image img,
+.binder[data-look="gamma"] .bp-card-pictures img {
+  border-radius: 18px;
 }
 
 /* ------------------------------------------------------------------ */
-/* Sections and their entries                                          */
+/* Cards                                                               */
 /* ------------------------------------------------------------------ */
 
-.binder-section {
-  padding: 56px 0;
-}
-
-.binder-entry {
-  scroll-margin-top: 16px;
-}
-
-.binder-section-head {
+.bp-card {
+  position: relative;
   display: grid;
-  gap: 8px 20px;
-  margin-bottom: 32px;
-}
-
-.binder-section-head h2 {
-  font-family: var(--b-font-display);
-  line-height: 1;
-}
-
-.binder .binder-section-intro {
-  max-width: 60ch;
-  margin-top: 10px;
-  color: var(--b-muted);
-  font-size: 17px;
-}
-
-/* At most two side by side, so there's room for photos and no lone card */
-.binder-entries {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
 }
 
-.binder-entry h3 {
+.bp-card-body {
+  grid-area: body;
+  min-width: 0;
+}
+
+.bp-card-pictures {
+  grid-area: pics;
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr));
+  gap: 12px;
+  align-content: start;
+}
+
+.bp-card.bp-pictures-below {
+  grid-template-areas: "body" "pics";
+}
+
+.bp-card.bp-pictures-above {
+  grid-template-areas: "pics" "body";
+}
+
+.bp-card.bp-pictures-left {
+  grid-template-columns: var(--side, 42%) minmax(0, 1fr);
+  grid-template-areas: "pics body";
+}
+
+.bp-card.bp-pictures-right {
+  grid-template-columns: minmax(0, 1fr) var(--side, 42%);
+  grid-template-areas: "body pics";
+}
+
+.bp-pictures-small {
+  --cols: 3;
+  --side: 30%;
+}
+
+.bp-pictures-medium {
+  --cols: 2;
+  --side: 42%;
+}
+
+.bp-pictures-large {
+  --cols: 1;
+  --side: 55%;
+}
+
+.bp-pictures-left .bp-card-pictures,
+.bp-pictures-right .bp-card-pictures {
+  --cols: 1;
+}
+
+.bp-card h3 {
   font-family: var(--b-font-display);
   line-height: 1.1;
 }
 
-.binder-entry-summary {
+.bp-card-text {
   margin-top: 10px;
   color: var(--b-muted);
-}
-
-/* Members write these in the hub's editor: keep their line breaks and
-   paragraphs */
-.binder .binder-tagline,
-.binder .binder-section-intro,
-.binder .binder-entry-summary {
   white-space: pre-line;
 }
 
-/* The binder didn't load, or there's no such season */
-.binder-problem {
-  font-size: 17px;
-}
-
-.binder .binder-problem-action {
-  margin-top: 16px;
-}
-
-.binder[data-team="lambda"] .binder-problem a {
-  color: var(--b-ember);
-}
-
-.binder[data-team="gamma"] .binder-problem {
-  text-align: right;
-}
-
-.binder[data-team="gamma"] .binder-problem a {
-  color: var(--b-graphite);
-  font-weight: 600;
-}
-
-.binder-entry h4 {
+.bp-card h4 {
   margin-top: 20px;
   margin-bottom: 8px;
   font-family: var(--b-font-label);
-  font-size: 12px;
+  font-size: calc(12px * var(--b-scale));
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
-.binder-features li {
+.bp-features li {
   position: relative;
   padding-left: 24px;
 }
 
-.binder-features li + li {
+.bp-features li + li {
   margin-top: 6px;
 }
 
-.binder-figures {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
-  gap: 12px;
-  margin-top: 20px;
-}
-
-.binder-figures img {
+.bp-card-pictures img {
   width: 100%;
   height: auto;
 }
 
-.binder-figures figcaption {
-  margin-top: 6px;
-  color: var(--b-muted);
-  font-size: 13px;
-}
+/* Lambda: squared cards with one corner cut */
 
-.binder-sponsor-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr));
-  gap: 12px;
-}
-
-.binder-sponsor {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 96px;
-  padding: 16px;
-  text-align: center;
-  color: var(--b-muted);
-}
-
-.binder-sponsor a {
-  text-decoration: none;
-}
-
-.binder-sponsor img {
-  max-height: 64px;
-  object-fit: contain;
-}
-
-.binder-footer {
-  padding: 36px 0 48px;
-  border-top: 1px solid var(--b-line);
-  color: var(--b-muted);
-  font-size: 14px;
-}
-
-/* Lambda: big outlined numbers, squared cards with one corner cut */
-
-.binder[data-team="lambda"] .binder-section {
-  border-top: 1px solid var(--b-line);
-}
-
-.binder[data-team="lambda"] .binder-section-head {
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: end;
-}
-
-.binder[data-team="lambda"] .binder-sponsors .binder-section-head {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.binder[data-team="lambda"] .binder-section-number {
-  font-family: var(--b-font-display);
-  font-size: clamp(72px, 14vw, 120px);
-  font-weight: 900;
-  line-height: 0.78;
-  color: transparent;
-  -webkit-text-stroke: 1.5px var(--b-ember);
-}
-
-.binder[data-team="lambda"] .binder-section-head h2 {
-  font-size: clamp(44px, 8vw, 72px);
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-
-.binder[data-team="lambda"] .binder-entry {
-  position: relative;
+.binder[data-look="lambda"] .bp-card {
   padding: 26px 26px 28px;
   background: linear-gradient(225deg, transparent 0 18px, var(--b-card) 18px);
   border-left: 3px solid var(--b-maroon);
@@ -857,7 +868,7 @@ html:has(.binder) {
 }
 
 /* A thin line across the cut corner */
-.binder[data-team="lambda"] .binder-entry::after {
+.binder[data-look="lambda"] .bp-card::after {
   content: "";
   position: absolute;
   top: 0;
@@ -867,27 +878,27 @@ html:has(.binder) {
   background: linear-gradient(
     45deg,
     transparent calc(50% - 0.75px),
-    rgba(226, 71, 91, 0.8) calc(50% - 0.75px) calc(50% + 0.75px),
+    color-mix(in srgb, var(--b-accent) 80%, transparent) calc(50% - 0.75px) calc(50% + 0.75px),
     transparent calc(50% + 0.75px)
   );
 }
 
-.binder[data-team="lambda"] .binder-entry:hover {
+.binder[data-look="lambda"] .bp-card:hover {
   border-left-color: var(--b-ember);
 }
 
-.binder[data-team="lambda"] .binder-entry h3 {
-  font-size: 34px;
+.binder[data-look="lambda"] .bp-card h3 {
+  font-size: calc(34px * var(--b-scale));
   font-weight: 800;
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
 
-.binder[data-team="lambda"] .binder-entry h4 {
+.binder[data-look="lambda"] .bp-card h4 {
   color: var(--b-ember);
 }
 
-.binder[data-team="lambda"] .binder-features li::before {
+.binder[data-look="lambda"] .bp-features li::before {
   content: "/";
   position: absolute;
   left: 4px;
@@ -897,59 +908,9 @@ html:has(.binder) {
   font-weight: 700;
 }
 
-.binder[data-team="lambda"] .binder-sponsor {
-  border: 1px dashed rgba(199, 194, 184, 0.3);
-  font-family: var(--b-font-label);
-  font-size: 13px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
+/* Gamma: rounded frosted cards */
 
-.binder[data-team="lambda"] .binder-footer {
-  font-family: var(--b-font-label);
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-/* Gamma: headings on the right in wide lettering (Lambda's mirrored, so the
-   number sits to the right of the title), rounded frosted cards */
-
-.binder[data-team="gamma"] .binder-section-head {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  text-align: right;
-}
-
-.binder[data-team="gamma"] .binder-section-head .binder-section-number {
-  grid-column: 2;
-  grid-row: 1;
-}
-
-.binder[data-team="gamma"] .binder-section-intro {
-  margin-left: auto;
-}
-
-.binder[data-team="gamma"] .binder-section-number {
-  display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  border: 1.5px solid var(--b-graphite);
-  border-radius: 50%;
-  font-family: var(--b-font-display);
-  font-size: 14px;
-  font-weight: 600;
-  box-shadow: 0 0 0 6px rgba(35, 40, 46, 0.06);
-}
-
-.binder[data-team="gamma"] .binder-section-head h2 {
-  font-size: clamp(32px, 6vw, 52px);
-  font-weight: 700;
-  letter-spacing: -0.025em;
-}
-
-.binder[data-team="gamma"] .binder-entry {
+.binder[data-look="gamma"] .bp-card {
   padding: 28px;
   background: var(--b-card);
   border: 1px solid rgba(255, 255, 255, 0.9);
@@ -962,24 +923,24 @@ html:has(.binder) {
   transition: box-shadow 0.3s ease, background-color 0.3s ease;
 }
 
-.binder[data-team="gamma"] .binder-entry:hover {
+.binder[data-look="gamma"] .bp-card:hover {
   background: rgba(255, 255, 255, 0.75);
   box-shadow:
     inset 0 1px 0 #ffffff,
     0 24px 48px -24px rgba(21, 24, 28, 0.5);
 }
 
-.binder[data-team="gamma"] .binder-entry h3 {
-  font-size: 22px;
+.binder[data-look="gamma"] .bp-card h3 {
+  font-size: calc(22px * var(--b-scale));
   font-weight: 600;
   letter-spacing: -0.015em;
 }
 
-.binder[data-team="gamma"] .binder-entry h4 {
+.binder[data-look="gamma"] .bp-card h4 {
   color: var(--b-graphite);
 }
 
-.binder[data-team="gamma"] .binder-features li::before {
+.binder[data-look="gamma"] .bp-features li::before {
   content: "";
   position: absolute;
   left: 4px;
@@ -990,18 +951,208 @@ html:has(.binder) {
   border-radius: 50%;
 }
 
-.binder[data-team="gamma"] .binder-figures img {
-  border-radius: 16px;
+/* ------------------------------------------------------------------ */
+/* Stats                                                               */
+/* ------------------------------------------------------------------ */
+
+.bp-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 12px;
 }
 
-.binder[data-team="gamma"] .binder-sponsor {
+.bp-stat {
+  position: relative;
+  min-width: 0;
+}
+
+.bp-stat dt {
+  font-family: var(--b-font-label);
+  font-size: calc(12px * var(--b-scale));
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--b-muted);
+}
+
+.bp-stat dd {
+  margin-top: 4px;
+  font-family: var(--b-font-display);
+}
+
+.binder[data-look="lambda"] .bp-stat {
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.025);
+  border-left: 3px solid var(--b-maroon);
+}
+
+.binder[data-look="lambda"] .bp-stat dd {
+  font-size: calc(26px * var(--b-scale));
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  line-height: 1.1;
+}
+
+.binder[data-look="gamma"] .bp-stat {
+  padding: 14px 16px;
+  background: var(--b-card);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 20px;
+  box-shadow: 0 10px 30px -18px rgba(21, 24, 28, 0.4);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  text-align: right;
+}
+
+.binder[data-look="gamma"] .bp-stat dt {
+  letter-spacing: 0.1em;
+  font-weight: 500;
+}
+
+.binder[data-look="gamma"] .bp-stat dd {
+  font-size: calc(16px * var(--b-scale));
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------ */
+/* Sponsors                                                            */
+/* ------------------------------------------------------------------ */
+
+.bp-sponsors h2 {
+  font-family: var(--b-font-display);
+  line-height: 1;
+}
+
+.bp-sponsors-text {
+  max-width: 60ch;
+  margin-top: 10px;
+  color: var(--b-muted);
+  font-size: calc(17px * var(--b-scale));
+  white-space: pre-line;
+}
+
+.bp-sponsor-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr));
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.bp-sponsor {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 96px;
+  padding: 16px;
+  text-align: center;
+  color: var(--b-muted);
+}
+
+.bp-sponsor a {
+  text-decoration: none;
+}
+
+.bp-sponsor img {
+  max-height: 64px;
+  object-fit: contain;
+}
+
+.binder[data-look="lambda"] .bp-sponsors h2 {
+  font-size: calc(64px * var(--b-scale));
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.binder[data-look="lambda"] .bp-sponsor {
+  border: 1px dashed rgba(199, 194, 184, 0.3);
+  font-family: var(--b-font-label);
+  font-size: calc(13px * var(--b-scale));
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.binder[data-look="gamma"] .bp-sponsors {
+  text-align: right;
+}
+
+.binder[data-look="gamma"] .bp-sponsors h2 {
+  font-size: calc(46px * var(--b-scale));
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.binder[data-look="gamma"] .bp-sponsors-text {
+  margin-left: auto;
+}
+
+.binder[data-look="gamma"] .bp-sponsor {
   background: rgba(255, 255, 255, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.9);
   border-radius: 22px;
   font-weight: 500;
 }
 
-.binder[data-team="gamma"] .binder-footer {
+/* ------------------------------------------------------------------ */
+/* Waiting, not loaded, or not up yet                                  */
+/* ------------------------------------------------------------------ */
+
+.binder .bp-waiting {
+  --size: clamp(64px, 15vw, 200px);
+}
+
+.binder[data-look="gamma"] .bp-waiting {
+  text-align: right;
+}
+
+/* The binder didn't load, or there's no such season */
+.binder-problem,
+.binder-unpublished {
+  padding: 32px 0;
+  font-size: 17px;
+}
+
+.binder-unpublished {
+  color: var(--b-muted);
+}
+
+.binder .binder-problem-action {
+  margin-top: 16px;
+}
+
+.binder[data-look="lambda"] .binder-problem a {
+  color: var(--b-ember);
+}
+
+.binder[data-look="gamma"] .binder-problem,
+.binder[data-look="gamma"] .binder-unpublished {
+  text-align: right;
+}
+
+.binder[data-look="gamma"] .binder-problem a {
+  color: var(--b-graphite);
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------ */
+/* Footer                                                              */
+/* ------------------------------------------------------------------ */
+
+.binder-footer {
+  padding: 36px 0 48px;
+  border-top: 1px solid var(--b-line);
+  color: var(--b-muted);
+  font-size: 14px;
+}
+
+.binder[data-look="lambda"] .binder-footer {
+  font-family: var(--b-font-label);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.binder[data-look="gamma"] .binder-footer {
   text-align: right;
 }
 
