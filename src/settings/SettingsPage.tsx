@@ -15,7 +15,7 @@ import { rememberedMe } from "../me";
  * until each one moves over.
  */
 
-type Me = { permissions: Record<string, boolean> };
+type Me = { name?: string; permissions: Record<string, boolean> };
 
 type Section = "appearance" | "notifications" | "password" | "confidential" | "support";
 
@@ -220,6 +220,7 @@ export function SettingsPage() {
                   <PasswordSettings
                     key={String(can("password:any"))}
                     anyPassword={can("password:any")}
+                    name={me.name ?? ""}
                   />
                 </SettingsSection>
               ) : null

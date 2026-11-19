@@ -63,6 +63,11 @@
   pointer-events: none;
 }
 
+/* A 3D model moves with the rest until it's opened to turn */
+.bp-editing .bp-el:not(.is-open) .bp-model-stage canvas {
+  pointer-events: none;
+}
+
 .bp-editable {
   outline: none;
   cursor: text;
@@ -163,6 +168,18 @@
   display: block;
 }
 
+.be-editor .bp-field-note {
+  display: block;
+  margin-top: 6px;
+  overflow: hidden;
+  color: var(--b-muted);
+  font: 12px/1.3 "Geist Mono Variable", ui-monospace, monospace;
+  letter-spacing: normal;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
+
 .be-editor .bp-picture-actions {
   display: flex;
   gap: 4px;
@@ -171,9 +188,11 @@
 
 .be-editor .bp-picture-actions button,
 .be-editor .bp-add-picture,
+.be-editor .bp-row-add,
 .be-editor .bp-stat-remove,
 .be-editor .bp-stat-add,
-.be-editor .bp-sponsor-edit button {
+.be-editor .bp-sponsor-edit button,
+.be-editor .be-footer-edit {
   padding: 4px 9px;
   border: 1px solid var(--be-panel-line);
   border-radius: 6px;
@@ -201,6 +220,71 @@
 
 .be-editor .bp-add-picture:hover {
   opacity: 1;
+}
+
+/* Add a step, an event or pictures, at the end of a list */
+.be-editor .bp-row-add {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 14px;
+  border: 1.5px dashed currentColor;
+  background: transparent;
+  color: var(--b-text);
+  opacity: 0.6;
+}
+
+.be-editor .bp-row-add:hover {
+  opacity: 1;
+}
+
+/* A gallery's goes on the end of its row */
+.be-editor .bp-gallery .bp-row-add {
+  flex: none;
+  width: 170px;
+  min-height: calc(var(--h) * var(--b-scale));
+  margin-top: 0;
+}
+
+/* Room for each picture's caption fields while a gallery is open */
+.be-editor .bp-el.is-open .bp-gallery-item {
+  min-width: 220px;
+}
+
+.be-editor .bp-gallery-empty {
+  width: 100%;
+  min-height: calc(var(--h) * var(--b-scale));
+}
+
+.be-editor .bp-list-empty {
+  min-height: 80px;
+  margin-top: 14px;
+}
+
+/* An award row's buttons go under its columns */
+.be-editor .bp-award .bp-row-actions {
+  grid-column: 1 / -1;
+}
+
+/* Something typed in a block that can't be used, like a link that isn't one */
+.be-editor .bp-field-problem {
+  color: #e5484d;
+  white-space: normal;
+}
+
+/* A button's link box stays a usable width whichever way the button lines up */
+.be-editor .bp-button-fields {
+  display: block;
+  max-width: 420px;
+  margin-top: 8px;
+}
+
+.be-editor .bp-align-right .bp-button-fields {
+  margin-left: auto;
+}
+
+.be-editor .bp-align-center .bp-button-fields {
+  margin-inline: auto;
 }
 
 /* A round badge on the stat's corner, clear of its text */
@@ -321,6 +405,23 @@
 
 .be-tool-number input {
   width: 58px;
+}
+
+.be-tool-color {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 4px;
+}
+
+.be-tool-color input {
+  width: 30px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--be-panel-line);
+  border-radius: 5px;
+  background: transparent;
+  cursor: pointer;
 }
 
 .be-align-icon {
@@ -489,13 +590,17 @@
   position: relative;
 }
 
+/* Two columns, so every kind fits above the bar on a laptop's screen */
 .be-add-menu {
   position: absolute;
   bottom: calc(100% + 10px);
   left: 0;
   display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 2px;
-  width: 300px;
+  width: min(540px, calc(100vw - 32px));
+  max-height: calc(100vh - 170px);
+  overflow-y: auto;
   margin: 0;
   padding: 6px;
   border: 1px solid var(--be-panel-line);
@@ -1023,4 +1128,46 @@ body:has(.be-bar) .hub-bug-button {
 /* With the Look panel open, the bug button moves to its left */
 body:has(.be-drawer) .hub-bug-button {
   right: min(364px, calc(100vw - 190px));
+}
+
+/* ------------------------------------------------------------------ */
+/* Bold, italic and underline, and the footer                          */
+/* ------------------------------------------------------------------ */
+
+/* B, I and U on the toolbar, drawn in their own style */
+.be-format {
+  min-width: 30px;
+  padding: 0 6px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 15px;
+}
+
+/* The footer opens its dialog with a double click, or Edit footer */
+.be-footer-editable {
+  cursor: pointer;
+}
+
+.be-footer-editable:hover {
+  outline: 1px dashed rgba(61, 139, 255, 0.7);
+  outline-offset: -6px;
+}
+
+.be-editor .be-footer-edit {
+  margin-top: 16px;
+}
+
+/* A field in a dialog: its name over its box */
+.be-field {
+  display: grid;
+  gap: 6px;
+}
+
+.be-field > span {
+  color: var(--be-dim);
+  font-size: 13px;
+}
+
+/* A footer link has no logo, unlike a sponsor */
+.be-link-row {
+  grid-template-columns: minmax(0, 1fr) auto;
 }

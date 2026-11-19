@@ -1,5 +1,15 @@
 import { hubPath } from "../paths";
-import type { PageContent, PageImage, SeasonState, TeamId } from "../binder/content";
+import {
+  BINDER_FILE_MAX_BYTES,
+  FILE_TEXT_LIMITS,
+  type FooterContent,
+  type PageDocument,
+  type PageContent,
+  type PageImage,
+  type PageModel,
+  type SeasonState,
+  type TeamId,
+} from "../binder/content";
 
 /*
  * The binder editor's calls to ManuQueue's /api/binder routes
@@ -30,6 +40,15 @@ export type EditorSponsors = {
   updatedBy: string;
 };
 
+export type EditorFooter = {
+  draft: FooterContent;
+  /** The draft differs from what visitors see, until either page is published */
+  unpublished: boolean;
+  rev: number;
+  updatedAt: string | null;
+  updatedBy: string;
+};
+
 export type EditorSeason = {
   season: number;
   state: SeasonState;
@@ -38,6 +57,8 @@ export type EditorSeason = {
   seasons: { season: number; state: SeasonState }[];
   pages: Record<TeamId, EditorPage>;
   sponsors: EditorSponsors;
+  /** Shared by both teams and every season */
+  footer: EditorFooter;
 };
 
 export type Answer<T> =
@@ -126,6 +147,10 @@ export function saveSponsors(season: number, list: EditorSponsor[], rev: number,
     force,
     sponsors: list,
   });
+}
+
+export function saveFooter(footer: FooterContent, rev: number, force: boolean) {
+  return call<{ footer: EditorFooter }>("PUT", "/api/binder/footer", { rev, force, footer });
 }
 
 export function startSeason(from: "copy" | "outline") {
@@ -234,12 +259,106 @@ export async function uploadImage(
   }
 }
 
+/* ------------------------------------------------------------------ */
+/*  Uploading PDFs                                                    */
+/* ------------------------------------------------------------------ */
+
+export const FILE_ACCEPT = ".pdf,application/pdf";
+
+/** Uploads a PDF for a File block. ManuQueue checks it really is one */
+export async function uploadDocument(
+  file: File,
+): Promise<{ ok: true; document: PageDocument } | { ok: false; error: string }> {
+  if (file.type !== "application/pdf" && !/\.pdf$/i.test(file.name)) {
+    return { ok: false, error: `${file.name} isn't a PDF. Save it as a PDF and upload it again.` };
+  }
+  if (file.size > BINDER_FILE_MAX_BYTES) {
+    const mb = BINDER_FILE_MAX_BYTES / 1024 / 1024;
+    return { ok: false, error: `${file.name} is too big. A PDF can be up to ${mb} MB.` };
+  }
+  try {
+    const res = await fetch("/api/binder/files", {
+      method: "POST",
+      headers: { "content-type": "application/pdf" },
+      body: file,
+    });
+    if (res.status === 401) window.location.assign(hubPath("/login/"));
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      return { ok: false, error: `${file.name}: ${data?.error ?? "it didn't upload. Please try again."}` };
+    }
+    return {
+      ok: true,
+      document: { file: data.file, name: file.name.slice(0, FILE_TEXT_LIMITS.documentName), size: data.size },
+    };
+  } catch {
+    return { ok: false, error: `${file.name}: ${OFFLINE}` };
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Uploading 3D models                                               */
+/* ------------------------------------------------------------------ */
+
+export const MODEL_ACCEPT = ".stl";
+
+/** The longest name kept for a model's file (the server's limit) */
+const MODEL_NAME_LENGTH = FILE_TEXT_LIMITS.modelName;
+
+/**
+ * Packs an .stl down (packModel.ts) and uploads it. `onStep` hears what
+ * it's doing, for the editor's status. Its description and caption start
+ * empty.
+ */
+export async function uploadModel(
+  file: File,
+  onStep: (step: string) => void,
+): Promise<{ ok: true; model: PageModel } | { ok: false; error: string }> {
+  onStep("Reading the model…");
+  // Lets that show before the reading holds the page up
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  let packed: Awaited<ReturnType<typeof import("./packModel").packStl>>;
+  try {
+    const { packStl } = await import("./packModel");
+    packed = await packStl(file);
+  } catch {
+    return { ok: false, error: `${file.name} couldn't be read.` };
+  }
+  if ("error" in packed) return { ok: false, error: packed.error };
+
+  onStep("Uploading the model…");
+  try {
+    const res = await fetch("/api/binder/models", {
+      method: "POST",
+      headers: { "content-type": "application/octet-stream" },
+      body: packed.blob,
+    });
+    if (res.status === 401) window.location.assign(hubPath("/login/"));
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      return { ok: false, error: `${file.name}: ${data?.error ?? "it didn't upload. Please try again."}` };
+    }
+    return {
+      ok: true,
+      model: {
+        file: data.file,
+        name: file.name.slice(0, MODEL_NAME_LENGTH),
+        triangles: data.triangles,
+        alt: "",
+        caption: "",
+      },
+    };
+  } catch {
+    return { ok: false, error: `${file.name}: ${OFFLINE}` };
+  }
+}
+
 /** Opens the file picker; resolves with the files chosen (none if closed) */
-export function chooseFiles(multiple: boolean): Promise<File[]> {
+export function chooseFiles(multiple: boolean, accept = IMAGE_ACCEPT): Promise<File[]> {
   return new Promise((resolve) => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = IMAGE_ACCEPT;
+    input.accept = accept;
     input.multiple = multiple;
     input.addEventListener("change", () => resolve([...(input.files ?? [])]), { once: true });
     input.addEventListener("cancel", () => resolve([]), { once: true });

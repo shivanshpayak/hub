@@ -27,6 +27,28 @@ type LoginApiResponse = {
 
 const LOGIN_TIMEOUT_MS = 15000;
 
+/**
+ * How a name got chosen: clicked in the list, typed out in full, or put in
+ * all at once by a password manager (iPhone, Chrome or Edge autofill) or a
+ * paste
+ */
+type PickedBy = "picked" | "typed" | "filled";
+
+function sameName(a: string, b: string): boolean {
+  const tidy = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
+  return tidy(a) === tidy(b);
+}
+
+/**
+ * The one member with exactly this name. Saved logins hold the name, not the
+ * account, so autofill only works through this. Two people with the same
+ * name still have to pick from the list.
+ */
+function memberNamed(members: MemberOption[], name: string): MemberOption | undefined {
+  const matches = members.filter((m) => sameName(m.name, name));
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
 function NameAutocomplete({
   members,
   loading,
@@ -38,7 +60,7 @@ function NameAutocomplete({
   loading: boolean;
   disabled: boolean;
   selectedUserId: string;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, by?: PickedBy) => void;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -83,6 +105,18 @@ function NameAutocomplete({
     }
   }, [selectedUserId, members]);
 
+  // Autofill can fill the name before the member list arrives, so match it
+  // once the list is in
+  useEffect(() => {
+    if (loading || selectedUserId || !query) return;
+    const member = memberNamed(members, query);
+    if (member) {
+      setOpen(false);
+      onSelect(member.id, "filled");
+    }
+    // Only when the list arrives, not on every keystroke
+  }, [loading, members]);
+
   function closeDropdown() {
     setClosing(true);
     setTimeout(() => {
@@ -99,7 +133,21 @@ function NameAutocomplete({
 
   function handleInputChange(e: ChangeEvent<HTMLInputElement>) {
     const val = e.target.value;
+    // More than one letter at once is autofill or a paste, not typing
+    const filledIn = val.length - query.length > 1;
     setQuery(val);
+    const member = memberNamed(members, val);
+    if (member) {
+      // A whole name counts as choosing it, so a saved login works without
+      // touching the list. Typing keeps the list open in case it's someone
+      // with a longer name ("Sam" and "Sam Lee")
+      if (filledIn) closeDropdown();
+      else setOpen(true);
+      if (member.id !== selectedUserId) {
+        onSelect(member.id, filledIn ? "filled" : "typed");
+      }
+      return;
+    }
     setOpen(true);
     // Clear selection when they start typing again
     if (selectedUserId) {
@@ -145,16 +193,23 @@ function NameAutocomplete({
 
   return (
     <div ref={wrapperRef} className="relative">
+      {/* "username" is what lets iPhone, Chrome and Edge save and fill this
+          login. It stays usable while the list loads, since autofill skips
+          a disabled box */}
       <input
         ref={inputRef}
         type="text"
+        name="username"
         value={query}
         onChange={handleInputChange}
         onFocus={handleFocus}
         onKeyDown={handleKeyDown}
-        disabled={disabled || loading}
+        disabled={disabled}
         placeholder={loading ? "Loading members…" : "Type your name…"}
-        autoComplete="off"
+        autoComplete="username"
+        autoCapitalize="words"
+        autoCorrect="off"
+        spellCheck={false}
         className={inputClass}
       />
 
@@ -229,21 +284,38 @@ export function LoginForm() {
     };
   }, [teamParam]);
 
-  const handleNameSelect = useCallback((id: string) => {
+  const handleNameSelect = useCallback((id: string, by: PickedBy = "picked") => {
     setSelectedUserId(id);
     setErrorMessage(null);
-    if (id) {
-      setTimeout(() => pinRef.current?.focus(), 50);
+    // Move on to the PIN after a pick from the list, or after autofill that
+    // left the PIN empty. Never while someone is still typing a name
+    if (id && by !== "typed") {
+      setTimeout(() => {
+        if (by === "picked" || !pinRef.current?.value) pinRef.current?.focus();
+      }, 50);
     }
   }, []);
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (isPending || isRedirecting) return;
     setErrorMessage(null);
 
-    if (!selectedUserId) {
+    // Read what's in the boxes rather than the React state: Chrome and Edge
+    // can autofill a login on page load without telling the page until the
+    // first click
+    const typedName =
+      (e.currentTarget.elements.namedItem("username") as HTMLInputElement | null)
+        ?.value ?? "";
+    const userId = selectedUserId || memberNamed(members, typedName)?.id || "";
+    const password = pinRef.current?.value || pin;
+
+    if (!userId) {
       setErrorMessage("Please select your name.");
+      return;
+    }
+    if (!password) {
+      setErrorMessage("Please enter your PIN or password.");
       return;
     }
 
@@ -259,7 +331,7 @@ export function LoginForm() {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ userId: selectedUserId, pin }),
+        body: JSON.stringify({ userId, pin: password }),
         signal: controller.signal,
       });
 
@@ -350,10 +422,13 @@ export function LoginForm() {
           PIN or password
         </span>
         {/* Members have a 4-digit PIN and get the number pad. Admin and
-            Leadership can have any password and get the whole keyboard */}
+            Leadership can have any password and get the whole keyboard.
+            "current-password" lets iPhone, Chrome and Edge save and fill
+            it, so it's never disabled (autofill skips a disabled box) */}
         <input
           ref={pinRef}
           type="password"
+          name="password"
           inputMode={
             members.find((m) => m.id === selectedUserId)?.numberPad
               ? "numeric"
@@ -361,9 +436,9 @@ export function LoginForm() {
           }
           value={pin}
           onChange={(e) => setPin(e.target.value)}
-          autoComplete="off"
+          autoComplete="current-password"
           required
-          disabled={isPending || !selectedUserId}
+          disabled={isPending}
           placeholder="••••"
           className={pinInputClass}
         />
@@ -375,9 +450,11 @@ export function LoginForm() {
         </p>
       )}
 
+      {/* Not greyed out while the boxes look empty to the page: autofill on
+          page load can hide its values until this is clicked */}
       <button
         type="submit"
-        disabled={isPending || !selectedUserId || pin.length === 0}
+        disabled={isPending}
         className="w-full rounded-md bg-lambert-maroon px-3 py-2.5 text-sm font-semibold text-white hover:bg-lambert-maroon-deep disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isPending ? "Signing in…" : "Sign In"}

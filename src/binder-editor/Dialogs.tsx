@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { imageSrc, TEAM_NAMES } from "../binder/content";
+import { FOOTER_MAX_LINKS, imageSrc, TEAM_NAMES, type FooterContent } from "../binder/content";
+import { siteName } from "../binder/Footer";
 import * as api from "./api";
-import type { EditorSeason, EditorSponsor, EditorSponsors } from "./api";
+import type { EditorFooter, EditorSeason, EditorSponsor, EditorSponsors } from "./api";
 
 /*
- * The editor's dialogs: the sponsors list (shared by both teams) and the
- * seasons.
+ * The editor's dialogs: the sponsors list (shared by both teams), the footer
+ * (shared by both teams and every season) and the seasons.
  */
 
 function Dialog({
@@ -223,6 +224,207 @@ export function SponsorsDialog({
           }
         >
           Add a sponsor
+        </button>
+      )}
+    </Dialog>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  The footer                                                        */
+/* ------------------------------------------------------------------ */
+
+/** A link being edited, with a key that stays put while rows move */
+type LinkRow = { key: string; label: string; url: string };
+
+const toRows = (footer: FooterContent): LinkRow[] =>
+  footer.links.map((link) => ({ key: crypto.randomUUID(), ...link }));
+
+export function FooterDialog({
+  footer,
+  onSaved,
+  onClose,
+}: {
+  footer: EditorFooter;
+  onSaved: (footer: EditorFooter) => void;
+  onClose: () => void;
+}) {
+  const [base, setBase] = useState(footer);
+  const [line, setLine] = useState(footer.draft.line);
+  const [email, setEmail] = useState(footer.draft.email);
+  const [rows, setRows] = useState<LinkRow[]>(() => toRows(footer.draft));
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [theirs, setTheirs] = useState<EditorFooter | null>(null);
+
+  const current: FooterContent = {
+    line,
+    email,
+    links: rows.map(({ label, url }) => ({ label, url })),
+  };
+  const changed = JSON.stringify(current) !== JSON.stringify(base.draft);
+
+  const load = (next: EditorFooter) => {
+    setBase(next);
+    setLine(next.draft.line);
+    setEmail(next.draft.email);
+    setRows(toRows(next.draft));
+  };
+  const update = (key: string, patch: Partial<LinkRow>) =>
+    setRows((r) => r.map((row) => (row.key === key ? { ...row, ...patch } : row)));
+  const move = (index: number, to: number) =>
+    setRows((r) => {
+      if (to < 0 || to >= r.length) return r;
+      const next = [...r];
+      const [row] = next.splice(index, 1);
+      next.splice(to, 0, row);
+      return next;
+    });
+
+  async function save(force: boolean) {
+    setBusy("Saving…");
+    setError(null);
+    const answer = await api.saveFooter(current, base.rev, force);
+    setBusy(null);
+    if (answer.ok) {
+      load(answer.data.footer);
+      setTheirs(null);
+      onSaved(answer.data.footer);
+      return;
+    }
+    setError(answer.error);
+    setTheirs((answer.data?.current as EditorFooter | undefined) ?? null);
+  }
+
+  const close = () => {
+    if (!changed || window.confirm("The footer has changes that aren't saved. Close without saving them?")) {
+      onClose();
+    }
+  };
+
+  return (
+    <Dialog
+      title="Footer"
+      onClose={close}
+      footer={
+        <>
+          <p className="be-hint">
+            Under both teams' pages, in every season. Saved changes go up with the next Publish of either
+            team's page.
+          </p>
+          <button
+            type="button"
+            className="be-button be-primary"
+            disabled={!changed || busy !== null}
+            onClick={() => void save(false)}
+          >
+            {busy ?? "Save"}
+          </button>
+        </>
+      }
+    >
+      {error && (
+        <div className="be-alert" role="alert">
+          <p>{error}</p>
+          {theirs && (
+            <p className="be-row">
+              <button
+                type="button"
+                className="be-button"
+                onClick={() => {
+                  load(theirs);
+                  setTheirs(null);
+                  setError(null);
+                  onSaved(theirs);
+                }}
+              >
+                Load theirs
+              </button>
+              <button type="button" className="be-button be-danger" onClick={() => void save(true)}>
+                Save mine over it
+              </button>
+            </p>
+          )}
+        </div>
+      )}
+
+      <label className="be-field">
+        <span>Line about the team</span>
+        <input
+          className="be-input"
+          value={line}
+          placeholder="Lambert Robotics, Lambert High School"
+          maxLength={200}
+          onChange={(event) => setLine(event.target.value)}
+        />
+      </label>
+      <p className="be-hint">The team numbers go under it on their own.</p>
+
+      <label className="be-field">
+        <span>Contact email</span>
+        <input
+          className="be-input"
+          type="email"
+          inputMode="email"
+          value={email}
+          placeholder="team@example.com (optional)"
+          maxLength={200}
+          onChange={(event) => setEmail(event.target.value)}
+        />
+      </label>
+
+      <h3 className="be-dialog-subhead">Links</h3>
+      <p className="be-hint">
+        Social media, The Blue Alliance, anything else. Leave a name empty to use the site's own, like
+        Instagram.
+      </p>
+      <ol className="be-sponsor-rows">
+        {rows.map((row, index) => (
+          <li key={row.key} className="be-sponsor-row be-link-row">
+            <div className="be-sponsor-fields">
+              <input
+                className="be-input"
+                value={row.url}
+                placeholder="Address, like instagram.com/yourteam"
+                aria-label={`Link ${index + 1}'s address`}
+                inputMode="url"
+                maxLength={500}
+                onChange={(event) => update(row.key, { url: event.target.value })}
+              />
+              <input
+                className="be-input"
+                value={row.label}
+                placeholder={row.url.trim() ? `Name (${siteName(row.url.trim())})` : "Name (optional)"}
+                aria-label={`Link ${index + 1}'s name`}
+                maxLength={40}
+                onChange={(event) => update(row.key, { label: event.target.value })}
+              />
+            </div>
+            <div className="be-sponsor-moves">
+              <button type="button" className="be-button be-small" disabled={index === 0} aria-label="Move up" onClick={() => move(index, index - 1)}>
+                ↑
+              </button>
+              <button type="button" className="be-button be-small" disabled={index === rows.length - 1} aria-label="Move down" onClick={() => move(index, index + 1)}>
+                ↓
+              </button>
+              <button
+                type="button"
+                className="be-button be-small be-danger"
+                onClick={() => setRows((r) => r.filter((x) => x.key !== row.key))}
+              >
+                Remove
+              </button>
+            </div>
+          </li>
+        ))}
+      </ol>
+      {rows.length < FOOTER_MAX_LINKS && (
+        <button
+          type="button"
+          className="be-button"
+          onClick={() => setRows((r) => [...r, { key: crypto.randomUUID(), label: "", url: "" }])}
+        >
+          Add a link
         </button>
       )}
     </Dialog>

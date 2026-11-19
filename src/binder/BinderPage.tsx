@@ -7,9 +7,19 @@ import "@fontsource-variable/geist-mono";
 import "@fontsource-variable/unbounded";
 import "@fontsource-variable/space-grotesk";
 import "./binder.css";
-import { TEAM_NAMES, cachedBinder, loadBinder, type Binder, type PageContent, type TeamId } from "./content";
+import {
+  DEFAULT_FOOTER,
+  TEAM_NAMES,
+  cachedBinder,
+  loadBinder,
+  type Binder,
+  type PageContent,
+  type TeamId,
+} from "./content";
+import { BinderFooter } from "./Footer";
 import { Canvas } from "./Canvas";
 import { numberedHeadings } from "./layout";
+import { topBarLinks } from "./blocks";
 import { useLook } from "./look";
 import { LambertLogo } from "./LambertLogo";
 import { TopBar, type ContentsLink } from "../TopBar";
@@ -70,7 +80,8 @@ function seasonHref(season: number | null, team: TeamId): string {
   return `${hubPath("/")}?team=${team}${season === null ? "" : `&season=${season}`}`;
 }
 
-/** The top bar's links to a page's numbered headings, and its sponsors */
+/** The top bar's links to a page's numbered headings, then to blocks like
+ *  its sponsors */
 export function pageContents(page: PageContent | null): ContentsLink[] {
   if (!page) return [];
   return [
@@ -79,9 +90,7 @@ export function pageContents(page: PageContent | null): ContentsLink[] {
       href: `#${heading.anchor}`,
       number: heading.number,
     })),
-    ...(page.elements.some((e) => e.type === "sponsors")
-      ? [{ label: "Sponsors", href: "#sponsors" }]
-      : []),
+    ...topBarLinks(page.elements),
   ];
 }
 
@@ -89,21 +98,6 @@ export function pageContents(page: PageContent | null): ContentsLink[] {
  *  for a new tab) */
 function isPlainClick(event: MouseEvent): boolean {
   return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
-}
-
-export function BinderFooter({ numbers }: { numbers?: Record<TeamId, number> }) {
-  return (
-    <footer className="binder-footer">
-      <div className="binder-wrap">
-        <p>Lambert Robotics, Lambert High School</p>
-        <p>
-          {numbers
-            ? `FRC Teams ${numbers.lambda} ${TEAM_NAMES.lambda} and ${numbers.gamma} ${TEAM_NAMES.gamma}`
-            : `FRC Teams ${TEAM_NAMES.lambda} and ${TEAM_NAMES.gamma}`}
-        </p>
-      </div>
-    </footer>
-  );
 }
 
 /** Each team's number, from whichever pages have one */
@@ -235,7 +229,10 @@ export function BinderPage() {
           )}
         </main>
 
-        <BinderFooter numbers={binder ? teamNumbers(binder.pages) : undefined} />
+        <BinderFooter
+          footer={binder?.footer ?? DEFAULT_FOOTER}
+          numbers={binder ? teamNumbers(binder.pages) : undefined}
+        />
       </div>
     </>
   );

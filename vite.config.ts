@@ -41,7 +41,12 @@ const toolkitUrl = (
       __SCOUTING_URL__: JSON.stringify(scoutingUrl),
       __MEMTOOLKIT_URL__: JSON.stringify(toolkitUrl),
     },
-    server: { 
+    server: {
+      fs: {
+        // The binder's list of blocks lives in ManuQueue, which checks pages
+        // against it (src/binder/content.ts imports it)
+        allow: [".", "../manu-orders/src/lib/binder-blocks.ts"],
+      },
       proxy: {
         // The dev server passes these requests on to ManuQueue, so the
         // browser sees them as coming from the hub and keeps ManuQueue's
@@ -50,6 +55,9 @@ const toolkitUrl = (
       },
     },
     build: {
+      // three.js, for the binder's 3D models, is one chunk of about 560 kB
+      // (140 kB sent). It loads only on a page with a model on it
+      chunkSizeWarningLimit: 600,
       rollupOptions: {
         // Plain pages (home, roles, scouting roster) and ManuQueue styled
         // ones (login, members, settings, edit binder)

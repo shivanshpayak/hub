@@ -124,6 +124,8 @@ html:has(.binder) {
   --b-line: rgba(199, 194, 184, 0.14);
   --b-card: #170a0d;
   --b-panel: #1a0c0f;
+  /* A 3D model's colour, unless one is picked (#rrggbb: three.js reads it) */
+  --b-model: #d6cfc6;
   --b-focus: var(--b-accent);
   --b-scale: 1;
   --b-page-color: #0e0708;
@@ -155,6 +157,7 @@ html:has(.binder) {
   --b-line: rgba(21, 24, 28, 0.12);
   --b-card: rgba(255, 255, 255, 0.55);
   --b-panel: rgba(250, 249, 247, 0.96);
+  --b-model: #5c636b;
   --b-focus: var(--b-accent);
   --b-scale: 1;
   --b-page-color: #e3e0da;
@@ -717,6 +720,9 @@ html:has(.binder) {
 }
 
 .bp-image figcaption,
+.bp-model figcaption,
+.bp-video figcaption,
+.bp-gallery-item figcaption,
 .bp-card-pictures figcaption {
   margin-top: 6px;
   color: var(--b-muted);
@@ -759,6 +765,195 @@ html:has(.binder) {
 .binder[data-look="gamma"] .bp-image img,
 .binder[data-look="gamma"] .bp-card-pictures img {
   border-radius: 18px;
+}
+
+/* ------------------------------------------------------------------ */
+/* 3D models (ModelView.tsx)                                           */
+/* ------------------------------------------------------------------ */
+
+.bp-model {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+.bp-model-view {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.bp-model-view.is-fullscreen {
+  background: var(--b-page);
+}
+
+.bp-model-stage {
+  position: absolute;
+  inset: 0;
+}
+
+.bp-model-stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
+  cursor: grab;
+}
+
+.bp-model-stage canvas:active {
+  cursor: grabbing;
+}
+
+.bp-model-status {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 16px;
+  color: var(--b-muted);
+  font-family: var(--b-font-label);
+  font-size: calc(13px * var(--b-scale));
+  text-align: center;
+}
+
+.bp-model-status p {
+  margin: 0;
+}
+
+/* Top left, clear of the buttons in a narrow box */
+.bp-model-hint {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  max-width: calc(100% - 24px);
+  margin: 0;
+  color: var(--b-muted);
+  font-family: var(--b-font-label);
+  font-size: calc(12px * var(--b-scale));
+  pointer-events: none;
+}
+
+.bp-model-controls {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  gap: 6px;
+}
+
+.bp-model-controls button,
+.bp-model-status button,
+.bp-control {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  min-width: 34px;
+  height: 34px;
+  margin: 0;
+  padding: 0 10px;
+  border: 1px solid var(--b-line);
+  color: var(--b-text);
+  font-family: var(--b-font-label);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.bp-model-controls button {
+  padding: 0;
+}
+
+.bp-model-status button {
+  font-size: 13px;
+}
+
+.bp-model-controls svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bp-model-controls button:focus-visible,
+.bp-model-status button:focus-visible,
+.bp-control:focus-visible {
+  outline: 2px solid var(--b-focus);
+  outline-offset: 2px;
+}
+
+/* Lambda: square drafting buttons and a label like a drawing's notes */
+.binder[data-look="lambda"] .bp-model-controls button,
+.binder[data-look="lambda"] .bp-model-status button,
+.binder[data-look="lambda"] .bp-control {
+  border-color: rgba(199, 194, 184, 0.35);
+  background: color-mix(in srgb, var(--b-page-color) 70%, transparent);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.binder[data-look="lambda"] .bp-model-controls button:hover,
+.binder[data-look="lambda"] .bp-model-status button:hover,
+.binder[data-look="lambda"] .bp-control:hover:not(:disabled) {
+  border-color: var(--b-accent);
+  color: #ffffff;
+}
+
+.binder[data-look="lambda"] .bp-model-hint {
+  padding-left: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: linear-gradient(var(--b-accent), var(--b-accent)) left center / 8px 1.5px no-repeat;
+}
+
+.binder[data-look="lambda"] .bp-model.bp-framed .bp-model-view {
+  background:
+    linear-gradient(rgba(199, 194, 184, 0.05) 1px, transparent 1px) 0 0 / 22px 22px,
+    linear-gradient(90deg, rgba(199, 194, 184, 0.05) 1px, transparent 1px) 0 0 / 22px 22px;
+}
+
+/* Gamma: round frosted buttons and a soft pill of a hint */
+.binder[data-look="gamma"] .bp-model-controls button,
+.binder[data-look="gamma"] .bp-model-status button,
+.binder[data-look="gamma"] .bp-control {
+  border-color: rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 8px 18px -12px rgba(21, 24, 28, 0.55);
+  backdrop-filter: blur(8px);
+  font-weight: 500;
+}
+
+.binder[data-look="gamma"] .bp-model-status button {
+  padding: 0 16px;
+}
+
+.binder[data-look="gamma"] .bp-model-controls button:hover,
+.binder[data-look="gamma"] .bp-model-status button:hover,
+.binder[data-look="gamma"] .bp-control:hover:not(:disabled) {
+  background: #ffffff;
+}
+
+.binder[data-look="gamma"] .bp-model-hint {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(8px);
+}
+
+.binder[data-look="gamma"] .bp-model-view {
+  border-radius: 18px;
+}
+
+.binder[data-look="gamma"] .bp-model-view.is-fullscreen {
+  border-radius: 0;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1094,6 +1289,752 @@ html:has(.binder) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Buttons the page's own blocks use (gallery arrows, the viewer)      */
+/* ------------------------------------------------------------------ */
+
+.bp-control {
+  min-width: 38px;
+  height: 38px;
+  padding: 0 12px;
+  font-size: 15px;
+}
+
+.bp-control:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* ------------------------------------------------------------------ */
+/* Gallery                                                             */
+/* ------------------------------------------------------------------ */
+
+.bp-gallery {
+  --h: 240px;
+}
+
+.bp-gallery-small {
+  --h: 160px;
+}
+
+.bp-gallery-large {
+  --h: 340px;
+}
+
+.bp-gallery-strip {
+  display: flex;
+  gap: 14px;
+  padding-bottom: 6px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+}
+
+.bp-gallery-item {
+  flex: none;
+  width: min-content;
+  max-width: 100%;
+  scroll-snap-align: start;
+}
+
+.bp-gallery-open {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+.bp-gallery-open:disabled {
+  cursor: inherit;
+}
+
+.binder .bp-gallery-item img {
+  width: auto;
+  max-width: none;
+  height: calc(var(--h) * var(--b-scale));
+  object-fit: cover;
+}
+
+/* A phone's pictures are never taller than most of its width */
+.binder .bp-stack .bp-gallery-item img {
+  height: min(calc(var(--h) * var(--b-scale)), 62cqi);
+  max-width: 88cqi;
+}
+
+.bp-gallery-arrows {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.binder[data-look="gamma"] .bp-gallery-arrows {
+  justify-content: flex-end;
+}
+
+.binder[data-look="lambda"] .bp-gallery-item img {
+  border: 1px solid var(--b-line);
+}
+
+.binder[data-look="gamma"] .bp-gallery-item img {
+  border-radius: 18px;
+  box-shadow: 0 14px 30px -20px rgba(21, 24, 28, 0.5);
+}
+
+/* The pictures large, over everything */
+.bp-viewer {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--b-page-color);
+  color: var(--b-text);
+  overflow: hidden;
+}
+
+.bp-viewer::backdrop {
+  background: transparent;
+}
+
+.bp-viewer-picture {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  justify-items: center;
+  gap: 14px;
+  height: 100%;
+  margin: 0;
+  padding: 64px 72px 28px;
+}
+
+.binder .bp-viewer-picture img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  align-self: center;
+}
+
+.bp-viewer-picture figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 18px;
+  color: var(--b-muted);
+  font-size: calc(14px * var(--b-scale));
+  text-align: center;
+}
+
+.bp-viewer-count {
+  font-family: var(--b-font-label);
+  letter-spacing: 0.08em;
+}
+
+.bp-viewer-prev,
+.bp-viewer-next {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.bp-viewer-prev {
+  left: 14px;
+}
+
+.bp-viewer-next {
+  right: 14px;
+}
+
+.bp-viewer-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+}
+
+.binder[data-look="gamma"] .bp-viewer-picture img {
+  border-radius: 20px;
+}
+
+@media (max-width: 640px) {
+  .bp-viewer-picture {
+    padding: 64px 12px 84px;
+  }
+
+  .bp-viewer-prev,
+  .bp-viewer-next {
+    top: auto;
+    bottom: 20px;
+    transform: none;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Video (only YouTube's picture until it's played)                    */
+/* ------------------------------------------------------------------ */
+
+.bp-video {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.bp-video.bp-image-empty {
+  display: grid;
+  padding: 16px;
+}
+
+.bp-video-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: #000000;
+}
+
+.bp-video-stage iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.bp-video-play {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: #000000;
+  cursor: pointer;
+}
+
+.bp-video-play:disabled {
+  cursor: inherit;
+}
+
+.binder .bp-video-play img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.88;
+  transition: opacity 0.2s ease;
+}
+
+.bp-video-play:hover img {
+  opacity: 1;
+}
+
+.bp-video-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 74px;
+  height: 74px;
+  transform: translate(-50%, -50%);
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+/* The play triangle */
+.bp-video-icon::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 54%;
+  transform: translate(-50%, -50%);
+  border-style: solid;
+  border-width: 13px 0 13px 22px;
+  border-color: transparent transparent transparent currentColor;
+}
+
+/* Lambda: a maroon block with the cards' cut corner */
+.binder[data-look="lambda"] .bp-video-icon {
+  background: var(--b-accent-deep);
+  color: #ffffff;
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
+}
+
+.binder[data-look="lambda"] .bp-video-play:hover .bp-video-icon {
+  background: var(--b-accent);
+}
+
+/* Gamma: a round frosted button */
+.binder[data-look="gamma"] .bp-video-stage {
+  border-radius: 18px;
+}
+
+.binder[data-look="gamma"] .bp-video-icon {
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--b-accent);
+  box-shadow: 0 14px 30px -14px rgba(21, 24, 28, 0.6);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.binder[data-look="gamma"] .bp-video-play:hover .bp-video-icon {
+  background: #ffffff;
+  transform: translate(-50%, -50%) scale(1.05);
+}
+
+/* ------------------------------------------------------------------ */
+/* Timeline: Lambda's line on the left, Gamma's on the right           */
+/* ------------------------------------------------------------------ */
+
+.bp-steps {
+  position: relative;
+  display: grid;
+  gap: 28px;
+}
+
+/* The line */
+.bp-steps::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+}
+
+.bp-step {
+  position: relative;
+  min-width: 0;
+}
+
+.bp-step-dot {
+  position: absolute;
+  top: 2px;
+  width: 16px;
+  height: 16px;
+}
+
+.bp-step-date {
+  display: block;
+  font-family: var(--b-font-label);
+  font-size: calc(12px * var(--b-scale));
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--b-muted);
+}
+
+.bp-step-title {
+  margin-top: 4px;
+  font-family: var(--b-font-display);
+  line-height: 1.15;
+}
+
+.bp-step-text {
+  max-width: 62ch;
+  margin-top: 6px;
+  color: var(--b-muted);
+  white-space: pre-line;
+}
+
+.binder[data-look="lambda"] .bp-steps {
+  padding-left: 40px;
+}
+
+.binder[data-look="lambda"] .bp-steps::before {
+  left: 7px;
+  background: linear-gradient(var(--b-accent-deep), color-mix(in srgb, var(--b-accent-deep) 25%, transparent));
+}
+
+/* A diamond on the line */
+.binder[data-look="lambda"] .bp-step-dot {
+  left: -40px;
+  border: 2px solid var(--b-accent);
+  background: var(--b-page-color);
+  transform: rotate(45deg) scale(0.85);
+}
+
+.binder[data-look="lambda"] .bp-step-date {
+  color: var(--b-ember);
+}
+
+.binder[data-look="lambda"] .bp-step-title {
+  font-size: calc(28px * var(--b-scale));
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.binder[data-look="gamma"] .bp-steps {
+  padding-right: 40px;
+  text-align: right;
+}
+
+.binder[data-look="gamma"] .bp-steps::before {
+  right: 7px;
+  border-radius: 2px;
+  background: linear-gradient(rgba(35, 40, 46, 0.35), rgba(35, 40, 46, 0.08));
+}
+
+/* A ring on the line */
+.binder[data-look="gamma"] .bp-step-dot {
+  right: -40px;
+  border: 2px solid var(--b-graphite);
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 6px 14px -6px rgba(21, 24, 28, 0.5);
+}
+
+.binder[data-look="gamma"] .bp-step-title {
+  font-size: calc(20px * var(--b-scale));
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.binder[data-look="gamma"] .bp-step-text {
+  margin-left: auto;
+}
+
+/* ------------------------------------------------------------------ */
+/* Awards and results                                                  */
+/* ------------------------------------------------------------------ */
+
+.bp-awards {
+  container-type: inline-size;
+}
+
+.bp-awards-title {
+  font-family: var(--b-font-display);
+  line-height: 1;
+}
+
+/* Under .bp-awards to win over .binder ol's margin */
+.bp-awards .bp-award-list {
+  margin-top: 22px;
+}
+
+.bp-award {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1.4fr);
+  align-items: baseline;
+  gap: 6px 22px;
+  padding: 16px 0;
+  border-top: 1px solid var(--b-line);
+}
+
+.bp-award:last-child {
+  border-bottom: 1px solid var(--b-line);
+}
+
+/* Each in its own column, even when the one before is empty */
+.bp-award-event {
+  grid-column: 1;
+  font-family: var(--b-font-display);
+  line-height: 1.2;
+}
+
+.bp-award-result {
+  grid-column: 2;
+  color: var(--b-muted);
+}
+
+.bp-award-won {
+  grid-column: 3;
+}
+
+/* A narrow box: one under another */
+@container (max-width: 560px) {
+  .bp-award {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bp-award-event,
+  .bp-award-result,
+  .bp-award-won {
+    grid-column: 1;
+  }
+}
+
+.binder[data-look="lambda"] .bp-awards-title {
+  font-size: calc(46px * var(--b-scale));
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.binder[data-look="lambda"] .bp-award-event {
+  font-size: calc(22px * var(--b-scale));
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.binder[data-look="lambda"] .bp-award-result {
+  font-family: var(--b-font-label);
+  font-size: calc(13px * var(--b-scale));
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.binder[data-look="lambda"] .bp-award-won {
+  color: var(--b-ember);
+}
+
+.binder[data-look="gamma"] .bp-awards-title {
+  font-size: calc(34px * var(--b-scale));
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  text-align: right;
+}
+
+.binder[data-look="gamma"] .bp-award-list {
+  padding: 6px 26px;
+  background: var(--b-card);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 26px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 18px 40px -24px rgba(21, 24, 28, 0.45);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.binder[data-look="gamma"] .bp-award:first-child {
+  border-top: 0;
+}
+
+.binder[data-look="gamma"] .bp-award:last-child {
+  border-bottom: 0;
+}
+
+.binder[data-look="gamma"] .bp-award-event {
+  font-size: calc(16px * var(--b-scale));
+  font-weight: 600;
+}
+
+.binder[data-look="gamma"] .bp-award-won {
+  color: var(--b-graphite);
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------ */
+/* Buttons                                                             */
+/* ------------------------------------------------------------------ */
+
+.bp-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50px;
+  padding: 0 28px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Lambda: maroon with the cards' cut corner, or a drawn outline */
+.binder[data-look="lambda"] .bp-button {
+  font-family: var(--b-font-display);
+  font-size: calc(20px * var(--b-scale));
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
+}
+
+.binder[data-look="lambda"] .bp-button-solid {
+  background: var(--b-accent-deep);
+  color: #ffffff;
+}
+
+.binder[data-look="lambda"] a.bp-button-solid:hover {
+  background: var(--b-accent);
+}
+
+.binder[data-look="lambda"] .bp-button-outline {
+  background:
+    linear-gradient(45deg, transparent calc(50% - 1px), var(--b-accent) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) top right / 14px 14px no-repeat;
+  box-shadow: inset 0 0 0 1.5px var(--b-accent);
+  color: var(--b-text);
+}
+
+.binder[data-look="lambda"] a.bp-button-outline:hover {
+  background-color: color-mix(in srgb, var(--b-accent) 16%, transparent);
+}
+
+/* Gamma: a graphite pill, or a frosted one */
+.binder[data-look="gamma"] .bp-button {
+  border-radius: 999px;
+  font-size: calc(16px * var(--b-scale));
+  font-weight: 600;
+}
+
+.binder[data-look="gamma"] .bp-button-solid {
+  background: var(--b-accent);
+  color: #ffffff;
+  box-shadow: 0 14px 26px -16px rgba(21, 24, 28, 0.7);
+}
+
+.binder[data-look="gamma"] a.bp-button-solid:hover {
+  background: color-mix(in srgb, var(--b-accent) 82%, #ffffff);
+}
+
+.binder[data-look="gamma"] .bp-button-outline {
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.95),
+    0 14px 26px -18px rgba(21, 24, 28, 0.5);
+  color: var(--b-text);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.binder[data-look="gamma"] a.bp-button-outline:hover {
+  background: #ffffff;
+}
+
+/* ------------------------------------------------------------------ */
+/* Files (a PDF to open)                                               */
+/* ------------------------------------------------------------------ */
+
+.bp-file {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 20px;
+  padding: 22px 24px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.bp-file-icon {
+  position: relative;
+  display: grid;
+  place-items: end center;
+  width: 46px;
+  height: 58px;
+  padding-bottom: 9px;
+  font-family: var(--b-font-label);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.bp-file-body {
+  display: block;
+  min-width: 0;
+}
+
+.bp-file-title {
+  font-family: var(--b-font-display);
+  line-height: 1.15;
+}
+
+.bp-file-text {
+  margin-top: 6px;
+  color: var(--b-muted);
+  white-space: pre-line;
+}
+
+.bp-file-meta {
+  display: block;
+  margin-top: 8px;
+  color: var(--b-muted);
+  font-family: var(--b-font-label);
+  font-size: calc(12px * var(--b-scale));
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.bp-file-open {
+  font-family: var(--b-font-label);
+  font-size: calc(13px * var(--b-scale));
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: color 0.2s ease;
+}
+
+/* Lambda: a card with the cut corner, and a drawn page with one too */
+.binder[data-look="lambda"] .bp-file {
+  background: linear-gradient(225deg, transparent 0 16px, var(--b-card) 16px);
+  border-left: 3px solid var(--b-maroon);
+  transition: border-color 0.25s ease;
+}
+
+.binder[data-look="lambda"] a.bp-file:hover {
+  border-left-color: var(--b-ember);
+}
+
+.binder[data-look="lambda"] a.bp-file:hover .bp-file-open {
+  color: var(--b-ember);
+}
+
+.binder[data-look="lambda"] .bp-file-icon {
+  color: var(--b-ember);
+  background:
+    linear-gradient(45deg, transparent calc(50% - 0.75px), var(--b-ember) calc(50% - 0.75px) calc(50% + 0.75px), transparent calc(50% + 0.75px)) top right / 12px 12px no-repeat;
+  box-shadow: inset 0 0 0 1.5px var(--b-ember);
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+}
+
+.binder[data-look="lambda"] .bp-file-title {
+  font-size: calc(26px * var(--b-scale));
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* Gamma: a frosted card and a graphite tile */
+.binder[data-look="gamma"] .bp-file {
+  background: var(--b-card);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 26px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 18px 40px -24px rgba(21, 24, 28, 0.45);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.binder[data-look="gamma"] a.bp-file:hover {
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.binder[data-look="gamma"] .bp-file-icon {
+  border-radius: 12px;
+  background: var(--b-accent);
+  color: #ffffff;
+}
+
+.binder[data-look="gamma"] .bp-file-title {
+  font-size: calc(19px * var(--b-scale));
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.binder[data-look="gamma"] .bp-file-open {
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.95);
+  font-family: var(--b-font-body);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* A phone: the Open word goes under the name */
+.bp-stack .bp-file {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.bp-stack .bp-file-open {
+  grid-column: 2;
+  justify-self: start;
+}
+
+/* ------------------------------------------------------------------ */
 /* Waiting, not loaded, or not up yet                                  */
 /* ------------------------------------------------------------------ */
 
@@ -1154,6 +2095,47 @@ html:has(.binder) {
 
 .binder[data-look="gamma"] .binder-footer {
   text-align: right;
+}
+
+/* The contact email and links (social media, The Blue Alliance). Under
+   .binder-footer to win over .binder ul's margin */
+.binder-footer .binder-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.binder[data-look="gamma"] .binder-footer-links {
+  justify-content: flex-end;
+}
+
+.binder-footer-links a {
+  color: var(--b-text);
+  text-decoration: none;
+  border-bottom: 1px solid var(--b-line);
+  padding-bottom: 2px;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.binder-footer-links a:hover,
+.binder-footer-links a:focus-visible {
+  color: var(--b-accent);
+  border-color: currentColor;
+}
+
+/* An address reads as typed, even in Lambda's capitals */
+.binder-footer-email {
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+/* Bold, italic and underline in text (formatting.tsx) */
+.binder u {
+  text-decoration-thickness: 0.07em;
+  text-underline-offset: 0.16em;
 }
 
 /* ------------------------------------------------------------------ */

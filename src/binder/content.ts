@@ -3,10 +3,22 @@
  * placed freely on a canvas) plus the sponsors both teams share.
  *
  * It comes from ManuQueue's server (GET /api/binder, see
- * manu-orders/src/lib/binder.ts, which has the same shapes), and editors
+ * manu-orders/src/lib/binder.ts), and editors
  * change it on the page itself in the hub's Edit Binder page
  * (src/binder-editor).
  */
+
+import {
+  footerWithDefaults,
+  withMissingFields,
+  type BinderDocument,
+  type BinderImage,
+  type BinderModel,
+  type ElementOf,
+  type FooterContent,
+  type MODEL_UPS,
+  type PageElement,
+} from "../../../manu-orders/src/lib/binder-blocks";
 
 export type TeamId = "lambda" | "gamma";
 
@@ -14,64 +26,73 @@ export const TEAM_IDS: TeamId[] = ["lambda", "gamma"];
 
 export const TEAM_NAMES: Record<TeamId, string> = { lambda: "Lambda", gamma: "Gamma" };
 
+/*
+ * What each kind of thing on a page keeps (text, pictures, 3D models, cards,
+ * stats, sponsors) is described once, in ManuQueue's
+ * src/lib/binder-blocks.ts, which its server checks every save against. The
+ * hub is built next to it, so it reads the same file. How each kind looks
+ * is in ./blocks/.
+ */
+export {
+  BINDER_FILE_MAX_BYTES,
+  BLOCKS,
+  CANVAS_WIDTH,
+  YOUTUBE_ID,
+  parseLink,
+  DEFAULT_FOOTER,
+  FILE_TEXT_LIMITS,
+  FOOTER_MAX_LINKS,
+  withMissingFields,
+  type FooterContent,
+  MODEL_UPS,
+  perPageLimit,
+  roomFor,
+  type BlockFields,
+  type BlockType,
+  type ElementOf,
+  type PageElement,
+  type Placement,
+} from "../../../manu-orders/src/lib/binder-blocks";
+
 /** A picture uploaded through /api/binder/images */
-export type PageImage = {
-  file: string;
-  /** What it shows, for screen readers and if it fails to load */
-  alt: string;
-  caption: string;
-};
+export type PageImage = BinderImage;
 
 export function imageSrc(file: string): string {
   return `/api/binder/images/${file}`;
 }
 
-export type TextVariant = "title" | "heading" | "subheading" | "lead" | "body" | "label";
-export type Align = "left" | "center" | "right";
+/** A 3D model uploaded through /api/binder/models: an .stl the editor
+ *  packed down first (modelFormat.ts) */
+export type PageModel = BinderModel;
 
-/** Where a thing sits, in canvas units (the canvas is CANVAS_WIDTH wide, see
- *  layout.ts). Text, cards, stats and sponsors grow to fit what's in them;
- *  their h is how tall they were when last arranged */
-export type Placement = { id: string; x: number; y: number; w: number; h: number };
+export function modelSrc(file: string): string {
+  return `/api/binder/models/${file}`;
+}
 
-export type TextElement = Placement & {
-  type: "text";
-  variant: TextVariant;
-  text: string;
-  /** Small text in front, like the season before the robot's name */
-  kicker: string;
-  /** Font size in canvas units */
-  size: number;
-  align: Align;
-  /** A heading with a number (01, 02, ...) that's also a link in the top bar */
-  numbered: boolean;
-};
+/** A PDF uploaded through /api/binder/files */
+export type PageDocument = BinderDocument;
 
-export type ImageElement = Placement & {
-  type: "image";
-  image: PageImage | null;
-  fit: "contain" | "cover";
-  frame: boolean;
-};
+/** Where a PDF opens, saved under the name it was uploaded with */
+export function documentSrc(document: PageDocument): string {
+  return `/api/binder/files/${document.file}?name=${encodeURIComponent(document.name)}`;
+}
 
-export type CardElement = Placement & {
-  type: "card";
-  title: string;
-  text: string;
-  features: string[];
-  images: PageImage[];
-  imagePlace: "below" | "above" | "left" | "right";
-  imageSize: "small" | "medium" | "large";
-};
+/** Which way is up in a model's file. CAD programs differ, so editors pick */
+export type ModelUp = (typeof MODEL_UPS)[number];
 
-export type StatsElement = Placement & {
-  type: "stats";
-  stats: { label: string; value: string }[];
-};
+/** Where a model is first seen from: degrees around it and down from
+ *  straight above, and how close (1 just fits it in its box) */
+export type ModelAngle = { yaw: number; pitch: number; zoom: number };
 
-export type SponsorsElement = Placement & { type: "sponsors"; title: string; text: string };
+/** A little to one side and above. The server's default too */
+export const MODEL_START_ANGLE: ModelAngle = { yaw: 35, pitch: 65, zoom: 1 };
 
-export type PageElement = TextElement | ImageElement | CardElement | StatsElement | SponsorsElement;
+export type TextElement = ElementOf<"text">;
+export type ImageElement = ElementOf<"image">;
+export type ModelElement = ElementOf<"model">;
+export type CardElement = ElementOf<"card">;
+export type StatsElement = ElementOf<"stats">;
+export type SponsorsElement = ElementOf<"sponsors">;
 
 /** One of the two built-in looks (binder.css) */
 export type Look = "lambda" | "gamma";
@@ -127,6 +148,9 @@ export type Binder = {
   /** Null for a page that hasn't been published */
   pages: Record<TeamId, PageContent | null>;
   sponsors: Sponsor[];
+  /** Under both pages, in every season: a line about the team, a contact
+   *  email and links */
+  footer: FooterContent;
 };
 
 export type BinderLoad =
@@ -147,10 +171,24 @@ export function cachedBinder(season: number | null): Binder | null {
   try {
     const raw = localStorage.getItem(cacheKey(season));
     const binder = raw ? (JSON.parse(raw) as Binder) : null;
-    return binder?.pages && "lambda" in binder.pages && "gamma" in binder.pages ? binder : null;
+    return binder?.pages && "lambda" in binder.pages && "gamma" in binder.pages
+      ? withDefaults(binder)
+      : null;
   } catch {
     return null;
   }
+}
+
+/** A binder kept on this device before something was added to it (the
+ *  footer, a field on a kind of block), filled in */
+function withDefaults(binder: Binder): Binder {
+  const fill = (page: PageContent | null) =>
+    page && { ...page, elements: withMissingFields(page.elements) };
+  return {
+    ...binder,
+    pages: { lambda: fill(binder.pages.lambda), gamma: fill(binder.pages.gamma) },
+    footer: footerWithDefaults(binder.footer),
+  };
 }
 
 /** The binder for a season (null for the live one), from the server */

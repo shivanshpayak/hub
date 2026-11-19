@@ -4,21 +4,30 @@ import { TopBar } from "../TopBar";
 import { hubPath } from "../paths";
 import { LambertLogo } from "../binder/LambertLogo";
 import { Canvas, type CanvasEditor } from "../binder/Canvas";
-import { BinderFooter, initialTeam, pageContents, rememberTeam } from "../binder/BinderPage";
+import { initialTeam, pageContents, rememberTeam } from "../binder/BinderPage";
+import { BinderFooter } from "../binder/Footer";
 import {
+  DEFAULT_FOOTER,
   TEAM_IDS,
   TEAM_NAMES,
+  perPageLimit,
+  roomFor,
+  type BlockType,
   type PageContent,
   type PageElement,
+  type PageDocument,
   type PageImage,
+  type PageModel,
   type Sponsor,
   type TeamId,
 } from "../binder/content";
+import { addChoices, uiOf } from "../binder/blocks";
+import type { AddChoice, ToolActions } from "../binder/blocks/kit";
 import { CANVAS_WIDTH } from "../binder/layout";
 import { PLAIN_THEME, useLook } from "../binder/look";
 import * as api from "./api";
-import { ElementToolbar, defaultSize, type ToolbarActions } from "./ElementToolbar";
-import { SeasonsDialog, SponsorsDialog } from "./Dialogs";
+import { ElementToolbar, type CommonActions } from "./ElementToolbar";
+import { FooterDialog, SeasonsDialog, SponsorsDialog } from "./Dialogs";
 import { LookPanel } from "./LookPanel";
 
 /*
@@ -44,6 +53,8 @@ type History = { past: PageContent[]; future: PageContent[] };
 
 const HISTORY_LIMIT = 100;
 
+type ChangeKind = "edit" | "continue" | "settle";
+
 /** ?season= in the address, or the live season */
 function seasonFromAddress(): number | "live" {
   const raw = new URLSearchParams(window.location.search).get("season");
@@ -54,86 +65,8 @@ function newId(): string {
   return crypto.randomUUID().slice(0, 8);
 }
 
-/** Something new to put on the page, `w` by `h`, before it's placed */
-function newElement(kind: AddKind, team: TeamId): PageElement {
-  const right = team === "gamma";
-  const align = right ? ("right" as const) : ("left" as const);
-  const base = { id: newId(), x: 0, y: 0 };
-  switch (kind) {
-    case "heading":
-      return {
-        ...base,
-        type: "text",
-        variant: "heading",
-        text: "",
-        kicker: "",
-        size: defaultSize("heading", team),
-        align,
-        numbered: true,
-        w: CANVAS_WIDTH,
-        h: 90,
-      };
-    case "text":
-      return {
-        ...base,
-        type: "text",
-        variant: "body",
-        text: "",
-        kicker: "",
-        size: defaultSize("body", team),
-        align,
-        numbered: false,
-        w: 560,
-        h: 60,
-      };
-    case "card":
-      return {
-        ...base,
-        type: "card",
-        title: "",
-        text: "",
-        features: [],
-        images: [],
-        imagePlace: "below",
-        imageSize: "medium",
-        w: 550,
-        h: 220,
-      };
-    case "picture":
-      return { ...base, type: "image", image: null, fit: "contain", frame: false, w: 420, h: 300 };
-    case "stats":
-      return {
-        ...base,
-        type: "stats",
-        stats: [
-          { label: "", value: "" },
-          { label: "", value: "" },
-        ],
-        w: CANVAS_WIDTH,
-        h: 80,
-      };
-    case "sponsors":
-      return {
-        ...base,
-        type: "sponsors",
-        title: "Our sponsors",
-        text: "",
-        w: CANVAS_WIDTH,
-        h: 220,
-      };
-  }
-}
-
-type AddKind = "heading" | "text" | "card" | "picture" | "stats" | "sponsors";
-
-const ADD_MENU: { kind: AddKind; label: string; hint: string }[] = [
-  { kind: "heading", label: "Heading", hint: "A numbered section, linked in the top bar" },
-  { kind: "text", label: "Text", hint: "A paragraph" },
-  { kind: "card", label: "Card", hint: "A topic with text, features and pictures" },
-  { kind: "picture", label: "Picture", hint: "A photo or CAD render" },
-  { kind: "stats", label: "Stats", hint: "Quick facts in a row" },
-  { kind: "sponsors", label: "Sponsors", hint: "The sponsors list" },
-];
+/** The Add menu: every kind of block's choices (src/binder/blocks) */
+const ADD_MENU = addChoices();
 
 /** Where the middle of the screen is on the canvas, for a new thing */
 function visibleSpot(w: number, h: number) {
@@ -161,7 +94,7 @@ export function BinderEditorPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [point, setPoint] = useState<{ x: number; y: number } | null>(null);
   const [view, setView] = useState<View>("edit");
-  const [dialog, setDialog] = useState<"sponsors" | "seasons" | null>(null);
+  const [dialog, setDialog] = useState<"sponsors" | "seasons" | "footer" | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [lookOpen, setLookOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -349,15 +282,19 @@ export function BinderEditorPage() {
 
   /* ---------------- Changing the page ---------------- */
 
-  /** Changes the open page. `remember`: a step for Undo */
-  function setPage(update: (page: PageContent) => PageContent, remember = true) {
+  /**
+   * Changes the open page. "edit": a step for Undo. "continue": an edit that
+   * joins the last step, like the rest of a slider drag or a number being
+   * typed. "settle": only measured places, not an edit.
+   */
+  function setPage(update: (page: PageContent) => PageContent, kind: ChangeKind = "edit") {
     if (!pages.current || lockRef.current.kind !== "mine") return;
     const t = teamRef.current;
     const before = pages.current[t];
     const after = update(before);
     if (after === before) return;
-    if (remember) {
-      edits.current[t] += 1;
+    if (kind !== "settle") edits.current[t] += 1;
+    if (kind === "edit") {
       const h = undoHistory.current[t];
       h.past.push(before);
       if (h.past.length > HISTORY_LIMIT) h.past.shift();
@@ -368,11 +305,14 @@ export function BinderEditorPage() {
     render();
   }
 
-  const updateElement = (id: string, patch: Partial<PageElement>) =>
-    setPage((p) => ({
-      ...p,
-      elements: p.elements.map((e) => (e.id === id ? ({ ...e, ...patch } as PageElement) : e)),
-    }));
+  const updateElement = (id: string, patch: Partial<PageElement>, kind: ChangeKind = "edit") =>
+    setPage(
+      (p) => ({
+        ...p,
+        elements: p.elements.map((e) => (e.id === id ? ({ ...e, ...patch } as PageElement) : e)),
+      }),
+      kind,
+    );
 
   function step(direction: "undo" | "redo") {
     if (!pages.current || lockRef.current.kind !== "mine") return;
@@ -388,19 +328,21 @@ export function BinderEditorPage() {
     render();
   }
 
-  function addElement(kind: AddKind) {
+  /** False, with a note, when the page already has as many of `type` as it
+   *  can hold (like 6 models) */
+  function roomOnPage(type: BlockType): boolean {
+    const full = page ? roomFor(type, page.elements) : null;
+    if (full) setToast({ text: full, tone: "error" });
+    return !full;
+  }
+
+  function addElement(type: BlockType, choice: AddChoice<BlockType>) {
     setAddOpen(false);
-    if (!page) return;
-    const element = newElement(kind, team);
-    const spot = visibleSpot(element.w, element.h);
-    const placed = { ...element, ...spot } as PageElement;
+    if (!page || !roomOnPage(type)) return;
+    const made = choice.make(team);
+    const placed = { ...made, id: newId(), type, ...visibleSpot(made.w, made.h) } as PageElement;
     setPage((p) => ({ ...p, elements: [...p.elements, placed] }));
-    setSelectedId(placed.id);
-    if (placed.type === "image") void replaceImage(placed.id);
-    else {
-      setPoint(null);
-      setEditingId(placed.id);
-    }
+    openElement(placed.id, null, placed);
   }
 
   function removeElement(id: string) {
@@ -412,6 +354,7 @@ export function BinderEditorPage() {
   function duplicate(id: string) {
     const original = page?.elements.find((e) => e.id === id);
     if (!original) return;
+    if (!roomOnPage(original.type)) return;
     const copy = { ...original, id: newId(), x: Math.min(original.x + 24, CANVAS_WIDTH - original.w), y: original.y + 24 };
     setPage((p) => ({ ...p, elements: [...p.elements, copy] }));
     setSelectedId(copy.id);
@@ -442,12 +385,31 @@ export function BinderEditorPage() {
     return images;
   }
 
-  async function replaceImage(id: string) {
-    const [image] = await pickImages(false);
-    if (!image) return;
-    const old = page?.elements.find((e) => e.id === id);
-    const keep = old?.type === "image" && old.image ? { alt: old.image.alt, caption: old.image.caption } : {};
-    updateElement(id, { image: { ...image, ...keep } } as Partial<PageElement>);
+  /** Asks for an .stl, packs it down and uploads it, saying how it's going */
+  async function pickModel(): Promise<PageModel | null> {
+    const [file] = await api.chooseFiles(false, api.MODEL_ACCEPT);
+    if (!file) return null;
+    const answer = await api.uploadModel(file, setBusy);
+    setBusy(null);
+    if (!answer.ok) {
+      setToast({ text: answer.error, tone: "error" });
+      return null;
+    }
+    return answer.model;
+  }
+
+  /** Asks for a PDF and uploads it, saying how it's going */
+  async function pickFile(): Promise<PageDocument | null> {
+    const [file] = await api.chooseFiles(false, api.FILE_ACCEPT);
+    if (!file) return null;
+    setBusy("Uploading…");
+    const answer = await api.uploadDocument(file);
+    setBusy(null);
+    if (!answer.ok) {
+      setToast({ text: answer.error, tone: "error" });
+      return null;
+    }
+    return answer.document;
   }
 
   /** Stops typing, saving what was typed (it saves when the cursor leaves) */
@@ -458,14 +420,14 @@ export function BinderEditorPage() {
     setPoint(null);
   }
 
-  function openElement(id: string, at: { x: number; y: number } | null) {
-    const element = page?.elements.find((e) => e.id === id);
+  /** Opens something for typing, unless its kind does something else first
+   *  (a picture spot asks for its picture). `known`: one just added, which
+   *  isn't on screen yet */
+  function openElement(id: string, at: { x: number; y: number } | null, known?: PageElement) {
+    const element = known ?? page?.elements.find((e) => e.id === id);
     if (!element) return;
     setSelectedId(id);
-    if (element.type === "image" && !element.image) {
-      void replaceImage(id);
-      return;
-    }
+    if (uiOf(element).opening?.(element, toolActions(element))) return;
     setPoint(at);
     setEditingId(id);
   }
@@ -533,8 +495,9 @@ export function BinderEditorPage() {
           ...d.pages,
           [team]: { ...d.pages[team], publishedRev: answer.data.publishedRev, publishedAt: answer.data.publishedAt },
         },
-        // The sponsors went up with it
+        // The sponsors and the footer went up with it
         sponsors: { ...d.sponsors, unpublished: false },
+        footer: { ...d.footer, unpublished: false },
       },
     );
     setToast({
@@ -627,16 +590,25 @@ export function BinderEditorPage() {
 
   const sponsors: Sponsor[] = (data?.sponsors.list ?? []).map(({ name, url, logo }) => ({ name, url, logo }));
 
-  const actionsFor = (element: PageElement): ToolbarActions => ({
-    team,
-    update: (patch) => updateElement(element.id, patch),
+  /** What a block's own buttons can do (src/binder/blocks/kit.tsx) */
+  function toolActions(element: PageElement): ToolActions {
+    return {
+      team,
+      update: (patch, continued) => updateElement(element.id, patch, continued ? "continue" : "edit"),
+      latest: () => pages.current?.[teamRef.current].elements.find((e) => e.id === element.id),
+      open: () => openElement(element.id, null),
+      pickImages,
+      pickModel,
+      pickFile,
+      editSponsors: () => setDialog("sponsors"),
+    };
+  }
+
+  const commonActions = (element: PageElement): CommonActions => ({
     remove: () => removeElement(element.id),
     duplicate: () => duplicate(element.id),
     front: () => reorder(element.id, "front"),
     back: () => reorder(element.id, "back"),
-    open: () => openElement(element.id, null),
-    replaceImage: () => void replaceImage(element.id),
-    editSponsors: () => setDialog("sponsors"),
   });
 
   const canvasEditor: CanvasEditor = {
@@ -657,11 +629,18 @@ export function BinderEditorPage() {
             return placeNow ? { ...e, ...placeNow } : e;
           }),
         }),
-        false,
+        "settle",
       ),
     pickImages,
     editSponsors: () => setDialog("sponsors"),
-    toolbar: (element) => <ElementToolbar element={element} actions={actionsFor(element)} />,
+    toolbar: (element) => (
+      <ElementToolbar
+        element={element}
+        actions={toolActions(element)}
+        common={commonActions(element)}
+        open={editingId === element.id}
+      />
+    ),
     room: 360,
   };
 
@@ -669,7 +648,8 @@ export function BinderEditorPage() {
   const unpublished =
     status !== "saved" ||
     (meta ? saved.current[team].rev !== meta.publishedRev : false) ||
-    Boolean(data?.sponsors.unpublished);
+    Boolean(data?.sponsors.unpublished) ||
+    Boolean(data?.footer.unpublished);
   const h = undoHistory.current[team];
 
   return (
@@ -712,7 +692,9 @@ export function BinderEditorPage() {
         </main>
 
         <BinderFooter
+          footer={data?.footer.draft ?? DEFAULT_FOOTER}
           numbers={pages.current ? { lambda: pages.current.lambda.number, gamma: pages.current.gamma.number } : undefined}
+          onEdit={canEdit ? () => setDialog("footer") : undefined}
         />
       </div>
 
@@ -742,11 +724,14 @@ export function BinderEditorPage() {
             </button>
             {addOpen && (
               <ul className="be-add-menu" role="menu">
-                {ADD_MENU.filter((item) => item.kind !== "sponsors" || !page.elements.some((e) => e.type === "sponsors")).map((item) => (
-                  <li key={item.kind} role="none">
-                    <button type="button" role="menuitem" onClick={() => addElement(item.kind)}>
-                      <strong>{item.label}</strong>
-                      <span>{item.hint}</span>
+                {ADD_MENU.filter(
+                  // A kind a page holds only one of (the sponsors) goes once it's there
+                  ({ type }) => perPageLimit(type)?.max !== 1 || roomFor(type, page.elements) === null,
+                ).map(({ type, choice }) => (
+                  <li key={`${type}-${choice.label}`} role="none">
+                    <button type="button" role="menuitem" onClick={() => addElement(type, choice)}>
+                      <strong>{choice.label}</strong>
+                      <span>{choice.hint}</span>
                     </button>
                   </li>
                 ))}
@@ -865,7 +850,7 @@ export function BinderEditorPage() {
           theme={page.theme}
           team={team}
           onChange={(update, remember) =>
-            setPage((p) => ({ ...p, theme: update(p.theme ?? PLAIN_THEME) }), remember)
+            setPage((p) => ({ ...p, theme: update(p.theme ?? PLAIN_THEME) }), remember ? "edit" : "continue")
           }
           pickImage={async () => (await pickImages(false))[0] ?? null}
           onClose={() => setLookOpen(false)}
@@ -877,6 +862,13 @@ export function BinderEditorPage() {
           season={data.season}
           sponsors={data.sponsors}
           onSaved={(next) => setData((d) => d && { ...d, sponsors: next })}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog === "footer" && data && (
+        <FooterDialog
+          footer={data.footer}
+          onSaved={(next) => setData((d) => d && { ...d, footer: next })}
           onClose={() => setDialog(null)}
         />
       )}

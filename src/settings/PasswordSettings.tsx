@@ -42,7 +42,14 @@ async function savePassword(currentPassword: string, newPassword: string): Promi
   }
 }
 
-export function PasswordSettings({ anyPassword }: { anyPassword: boolean }) {
+export function PasswordSettings({
+  anyPassword,
+  name,
+}: {
+  anyPassword: boolean;
+  /** The signed-in person's name, which is the saved login's username */
+  name: string;
+}) {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -81,6 +88,17 @@ export function PasswordSettings({ anyPassword }: { anyPassword: boolean }) {
   return (
     <div className={cardClass}>
       <form onSubmit={onSubmit} className="space-y-3">
+        {/* Hidden, so iPhone, Chrome and Edge know whose saved login to
+            update with the new PIN */}
+        <input
+          type="text"
+          name="username"
+          value={name}
+          autoComplete="username"
+          readOnly
+          hidden
+        />
+
         <label className="block space-y-1">
           <span className="text-sm font-medium text-black dark:text-white">
             Current PIN or password

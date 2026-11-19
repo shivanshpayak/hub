@@ -1,4 +1,6 @@
-import type { PageElement } from "./content";
+import { uiOf, topBarAnchors } from "./blocks";
+import { CANVAS_WIDTH, type PageElement } from "./content";
+import { plainText } from "./formatting";
 
 /*
  * How a page's freely placed things are laid out.
@@ -15,7 +17,7 @@ import type { PageElement } from "./content";
  * nothing ends up underneath it.
  */
 
-export const CANVAS_WIDTH = 1120;
+export { CANVAS_WIDTH };
 
 /** Narrower than this, the page stacks into one column */
 export const STACK_BELOW = 840;
@@ -23,9 +25,10 @@ export const STACK_BELOW = 840;
 /** Room under the last thing on the page */
 export const CANVAS_BOTTOM = 40;
 
-/** Things whose height follows what's in them */
+/** Things whose height follows what's in them (text, cards). Pictures and
+ *  3D models keep the size they're given. Each kind says (./blocks) */
 export function growsToFit(element: PageElement): boolean {
-  return element.type !== "image";
+  return uiOf(element).growsToFit;
 }
 
 export type Box = { top: number; height: number };
@@ -88,11 +91,13 @@ export type Heading = { id: string; anchor: string; number: string; title: strin
  */
 export function numberedHeadings(elements: PageElement[]): Heading[] {
   // The page's own anchors can't be taken
-  const used = new Set(["sponsors", "root", "top"]);
+  const used = new Set(["root", "top", ...topBarAnchors()]);
   const headings: Heading[] = [];
   for (const element of [...elements].sort(byPlace)) {
     if (element.type !== "text" || element.variant !== "heading" || !element.numbered) continue;
-    const base = slugify(element.text) || "section";
+    // The words alone: the top bar can't show bold or italic
+    const title = plainText(element.text);
+    const base = slugify(title) || "section";
     let anchor = base;
     for (let n = 2; used.has(anchor); n++) anchor = `${base}-${n}`;
     used.add(anchor);
@@ -100,7 +105,7 @@ export function numberedHeadings(elements: PageElement[]): Heading[] {
       id: element.id,
       anchor,
       number: String(headings.length + 1).padStart(2, "0"),
-      title: element.text,
+      title,
     });
   }
   return headings;

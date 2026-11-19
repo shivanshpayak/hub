@@ -8,7 +8,8 @@ import {
   type ReactNode,
 } from "react";
 import type { PageContent, PageElement, PageImage, Placement, Sponsor } from "./content";
-import { ElementView } from "./Elements";
+import { ElementView, uiOf } from "./blocks";
+import type { PageInfo } from "./blocks/kit";
 import {
   CANVAS_WIDTH,
   STACK_BELOW,
@@ -151,8 +152,12 @@ export function Canvas({
     [page.elements, drag],
   );
   const boxes = useMemo(() => layoutElements(elements, heights), [elements, heights]);
-  const headings = useMemo(() => numberedHeadings(page.elements), [page.elements]);
-  const headingById = new Map(headings.map((h) => [h.id, h]));
+  const headingById = useMemo(
+    () => new Map(numberedHeadings(page.elements).map((h) => [h.id, h])),
+    [page.elements],
+  );
+  // What every block can know about the page
+  const info: PageInfo = useMemo(() => ({ sponsors, headings: headingById }), [sponsors, headingById]);
   const height = canvasHeight(boxes) + (editor?.room ?? 0);
 
   // In the editor, save where things ended up once they've settled (fonts
@@ -312,8 +317,8 @@ export function Canvas({
           y = top;
           h = start.y + start.h - top;
         }
-        // A picture's corners keep its shape (Shift to stretch)
-        if (element.type === "image" && handle.length === 2 && !e.shiftKey) {
+        // A picture's or model's corners keep its shape (Shift to stretch)
+        if (!growsToFit(element) && handle.length === 2 && !e.shiftKey) {
           h = w / ratio;
           if (handle.includes("n")) y = start.y + start.h - h;
         }
@@ -342,9 +347,7 @@ export function Canvas({
     return (
       <ElementView
         element={element}
-        sponsors={sponsors}
-        heading={headingById.get(element.id)}
-        onEditSponsors={editor?.editSponsors}
+        page={info}
         edit={
           editor
             ? {
@@ -352,6 +355,7 @@ export function Canvas({
                 change: (patch) => editor.change(element.id, patch),
                 point: active ? editor.point : null,
                 pickImages: editor.pickImages,
+                editSponsors: editor.editSponsors,
               }
             : undefined
         }
@@ -360,7 +364,7 @@ export function Canvas({
   }
 
   const anchorFor = (element: PageElement) =>
-    headingById.get(element.id)?.anchor ?? (element.type === "sponsors" ? "sponsors" : undefined);
+    headingById.get(element.id)?.anchor ?? uiOf(element).topBar?.anchor;
 
   if (stacked) {
     return (
@@ -373,9 +377,9 @@ export function Canvas({
               data-id={element.id}
               className={`bp-el bp-el-${element.type}`}
               style={
-                element.type === "image"
-                  ? { aspectRatio: `${element.w} / ${element.h}`, maxWidth: element.w }
-                  : undefined
+                growsToFit(element)
+                  ? undefined
+                  : { aspectRatio: `${element.w} / ${element.h}`, maxWidth: element.w }
               }
             >
               {view(element)}
@@ -389,9 +393,9 @@ export function Canvas({
   const selected = editor?.selectedId ? elements.find((e) => e.id === editor.selectedId) : undefined;
   const selectedBox = selected ? boxes.get(selected.id) : undefined;
   const handles: Handle[] = selected
-    ? selected.type === "image"
-      ? ["nw", "n", "ne", "e", "se", "s", "sw", "w"]
-      : ["e", "w"]
+    ? growsToFit(selected)
+      ? ["e", "w"]
+      : ["nw", "n", "ne", "e", "se", "s", "sw", "w"]
     : [];
 
   return (
